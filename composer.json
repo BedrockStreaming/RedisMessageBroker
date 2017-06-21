@@ -1,0 +1,28 @@
+{
+  "name" : "m6web/redis-message-broker",
+  "description" : "message broker component backed with redis",
+  "keywords": ["redis"],
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Olivier Mansour",
+      "email": "olivier.mansour@m6.fr"
+    }
+  ],
+  "config": {
+    "vendor-dir": "vendor",
+    "bin-dir": "bin"
+  },
+  "require": {
+    "php": "~7.1.0",
+    "predis/predis": "^1.1.1"
+  },
+  "require-dev": {
+    "m6web/php-cs-fixer-config": "0.1.0",
+    "atoum/atoum": "~3.0.0"
+  },
+  "autoload": {
+    "psr-4": { "M6Web\\Component\\RedisMessageBroker\\": "src/" }
+  }
+}
