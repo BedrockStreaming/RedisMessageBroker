@@ -44,11 +44,16 @@ class Consumer extends AbstractMessageHandler
 
     public function getMessage(): ?Message
     {
+        $lists = $this->queue->getListNames();
+        shuffle($lists);
+
         // autoack
         if ($this->autoAck) {
-            return self::unserializeMessage(
-                $this->redisClient->rpop($this->queue->getARandomListName())
-            );
+            foreach ($lists as $list) {
+                if ($message = $this->redisClient->rpop($list)) {
+                    return self::unserializeMessage($message);
+                }
+            }
         }
 
         // no-autoack - messages have to be acked manually via ack
@@ -62,13 +67,23 @@ class Consumer extends AbstractMessageHandler
 
         // wohaaa - nothing in the working list !
 
-        // no-autoack - grab something in the queue and put it in the workinglist while returning the message
-        return self::unserializeMessage(
-            $this->redisClient->rpoplpush($this->queue->getARandomListName(), $this->getWorkingList())
-        );
+        // no-autoack - grab something on another working list. Retrieve from working list on another instance of Consumer
+        $workingLists = $this->redisClient->keys($this->queue->getWorkingListPrefixName().'*');
+        shuffle($workingLists);
+        foreach ($workingLists as $list) {
+            if ($message = $this->redisClient->rpoplpush($list, $list)) {
+                return self::unserializeMessage($message);
+            }
+        }
 
-        // no-autoack - grab something on another working list
-        // TODO
+        // grab something in the queue and put it in the workinglist while returning the message
+        foreach ($lists as $list) {
+            if ($message = $this->redisClient->rpoplpush($list, $this->getWorkingList())) {
+                return self::unserializeMessage($message);
+            }
+        }
+
+        return null;
     }
 
     public static function unserializeMessage(string $message): Message
@@ -87,13 +102,19 @@ class Consumer extends AbstractMessageHandler
         return $this->queue->getWorkingListPrefixName().'-'.$this->uniqueId;
     }
 
-    public function ack(Message $message)
+    /**
+     * @return int the number of messages acked
+     */
+    public function ack(Message $message): int
     {
         // erase all elements equals to the serialization of the message
-        $this->redisClient->lrem($this->getWorkingList(), 0, $message->getSerializedValue());
-        // delete working list if empty
-        if (!$this->redisClient->llen($this->getWorkingList())) {
-            $this->redisClient->del($this->getWorkingList());
+        if ($r = $this->redisClient->lrem($this->getWorkingList(), 0, $message->getSerializedValue())) {
+            // delete working list if empty
+            if (!$this->redisClient->llen($this->getWorkingList())) {
+                $this->redisClient->del($this->getWorkingList());
+            }
         }
+
+        return $r;
     }
 }

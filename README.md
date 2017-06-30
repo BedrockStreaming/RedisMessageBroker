@@ -39,13 +39,13 @@ $message = $consumer->getMessage();
 
 ## queue option
 
-To avoid hotpsots you can shard a queue on several lists : 
+To avoid hotpsots (when using redis in a cluster) you can shard a queue on several lists : 
 
 ```
-$queue = new RedisMessageBroker\Queue\Definition('raoul', 10); // shard on 10 list
+$queue = new RedisMessageBroker\Queue\Definition('raoul', 10); // shard on 10 lists
 ```
 
-In this mode, messages will be written and read amongs the 10 lists. FIFO is no more garanted.
+In this mode, messages will be written and read among the 10 lists. FIFO is no more guaranteed.
 
 ## manual message acknowledgment
 
