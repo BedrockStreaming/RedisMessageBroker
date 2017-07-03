@@ -24,11 +24,6 @@ class Message
     private $uniqueId;
 
     /**
-     * @var int
-     */
-    private $consumptionAttempts = 0;
-
-    /**
      * Message constructor.
      *
      * @param string         $message   the payload message
@@ -61,15 +56,6 @@ class Message
         return $this->uniqueId;
     }
 
-    public function consumptionAttempt(): null
-    {
-        ++$this->consumptionAttempts;
-    }
-
-    public function getConsumptionAttemps(): int
-    {
-        return $this->consumptionAttempts;
-    }
 
     public function getSerializedValue(): string
     {

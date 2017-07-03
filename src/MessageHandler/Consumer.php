@@ -89,7 +89,6 @@ class Consumer extends AbstractMessageHandler
     public static function unserializeMessage(string $message): Message
     {
         $message = Message::unserializeMessage($message);
-        $message->consumptionAttempt();
 
         return $message;
     }
