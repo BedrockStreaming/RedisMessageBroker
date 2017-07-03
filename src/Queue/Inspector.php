@@ -8,13 +8,23 @@ namespace M6Web\Component\RedisMessageBroker\Queue;
  */
 class Inspector extends AbstractQueueTool
 {
-    public function countReadyMessages()
+    public function countReadyMessages(): int
     {
-        // TODO
+        $i = 0;
+        foreach ($this->queue->getListNames() as $listName) {
+            $i += $this->redisClient->llen($listName);
+        }
+
+        return $i;
     }
 
-    public function countInProgressMessages()
+    public function countInProgressMessages(): int
     {
-        // TODO
+        $i = 0;
+        foreach ($this->redisClient->keys($this->queue->getWorkingListPrefixName().'*') as $list) {
+            $i += $this->redisClient->llen($list);
+        }
+
+        return $i;
     }
 }
