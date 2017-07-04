@@ -54,7 +54,7 @@ class Consumer extends AbstractMessageHandler
             }
         }
 
-        // #2 no-autoack - messages have to be acked manually via ack
+        // #2 no-autoack - messages have to be acked manually via ->ack(message)
         // anything in the working list ? if so grab one
         if ($message = $this->redisClient->rpoplpush($this->getWorkingList(), $this->getWorkingList())) {
             return self::unserializeMessage($message);

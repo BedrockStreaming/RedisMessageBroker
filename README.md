@@ -1,6 +1,10 @@
 # RedisMessageBroker
 
-WIP 
+This component will help you to build a messages brocker system over a [redis](redis.io) backend. It will take advantage of the redis cluster capabilities with the possibility to shard messages into several redis lists while producing messages. Consumer, in no auto-ack mode, implements a working list to be sure not to loose any messages when processing fail. 
+ 
+By design, producing is super fast (one Redis command) and consuming car be slow.
+ 
+You should use it with Redis >= 2.8.
 
 ## usage 
 
