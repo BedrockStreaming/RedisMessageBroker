@@ -56,7 +56,6 @@ class Message
         return $this->uniqueId;
     }
 
-
     public function getSerializedValue(): string
     {
         return serialize($this);

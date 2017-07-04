@@ -56,8 +56,11 @@ use Predis\Client as PredisClient;
 $redisClient = new PredisClient(); // refer to PredisDocumentation
 $queue = new RedisMessageBroker\Queue\Definition('raoul');
 $consumer = new RedisMessageBroker\MessageHandler\Consumer($squeue, $redisClient, uniqid());
+$consumer->setNoAutoAck();
 
 $message = $consumer->getMessage();
-// do something
-$consumer->ack($message);
+if ($message) {
+    // do something with the message
+    $consumer->ack($message); // erase the message from the working list
+}
 ```

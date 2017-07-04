@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace M6Web\Component\RedisMessageBroker\Queue;
 
 use M6Web\Component\RedisMessageBroker\Message;
@@ -34,7 +36,7 @@ class Cleanup extends AbstractQueueTool
         return $r;
     }
 
-    private function cleanMessage(string $lists, callable $hasToDelete): int
+    private function cleanMessage(array $lists, callable $hasToDelete): int
     {
         $r = 0;
         foreach ($lists as $list) {

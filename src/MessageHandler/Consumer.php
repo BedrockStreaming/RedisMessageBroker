@@ -12,15 +12,13 @@ use M6Web\Component\RedisMessageBroker\Queue;
  *
  * Consume messages
  * two modes are available : auto-ack or no-ack
- * auto-ack mode will directly fech and erase the message from the queue
- * no-ack mode will fetch the the message in a list unique for the worker. You will have to ack the message to erase it of the process list
+ * auto-ack mode will directly fech and erase the message from the queue. Its faster but unsafe.
+ * ack mode will fetch the the message in a list unique for the worker. You will have to ack the message to erase it of the process list. Consumption is slower in ack mode
  *
  * working list as to be unique
  */
 class Consumer extends AbstractMessageHandler
 {
-    private $consumerId;
-
     private $autoAck = true;
 
     /**
@@ -47,7 +45,7 @@ class Consumer extends AbstractMessageHandler
         $lists = $this->queue->getListNames();
         shuffle($lists);
 
-        // autoack
+        // #1 autoack
         if ($this->autoAck) {
             foreach ($lists as $list) {
                 if ($message = $this->redisClient->rpop($list)) {
@@ -56,13 +54,10 @@ class Consumer extends AbstractMessageHandler
             }
         }
 
-        // no-autoack - messages have to be acked manually via ack
+        // #2 no-autoack - messages have to be acked manually via ack
         // anything in the working list ? if so grab one
-        if ($this->redisClient->llen($this->getWorkingList())) {
-            // fetch from working list to see if there is something left to do
-            return self::unserializeMessage(
-                $this->redisClient->rpoplpush($this->getWorkingList(), $this->getWorkingList())
-            );
+        if ($message = $this->redisClient->rpoplpush($this->getWorkingList(), $this->getWorkingList())) {
+            return self::unserializeMessage($message);
         }
 
         // wohaaa - nothing in the working list !
@@ -88,9 +83,7 @@ class Consumer extends AbstractMessageHandler
 
     public static function unserializeMessage(string $message): Message
     {
-        $message = Message::unserializeMessage($message);
-
-        return $message;
+        return Message::unserializeMessage($message);
     }
 
     /**
@@ -102,15 +95,23 @@ class Consumer extends AbstractMessageHandler
     }
 
     /**
+     * @param Message $message this message will be acked in the working lists
+     *
      * @return int the number of messages acked
      */
     public function ack(Message $message): int
     {
-        // erase all elements equals to the serialization of the message
-        if ($r = $this->redisClient->lrem($this->getWorkingList(), 0, $message->getSerializedValue())) {
+        $r = 0;
+        $serializedMessage = $message->getSerializedValue();
+        foreach ($this->redisClient->keys($this->queue->getWorkingListPrefixName().'*') as $list) {
+            // erase all elements equals to the serialization of the message
+            $r += $this->redisClient->lrem($list, 0, $serializedMessage);
             // delete working list if empty
-            if (!$this->redisClient->llen($this->getWorkingList())) {
-                $this->redisClient->del($this->getWorkingList());
+            if (!$this->redisClient->llen($list)) {
+                $this->redisClient->del($list);
+            }
+            if ($r > 0) { // something got erased, stop looking
+                return $r;
             }
         }
 

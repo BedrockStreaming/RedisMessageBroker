@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace M6Web\Component\RedisMessageBroker\Queue;
 
 use Predis\Client as PredisClient;
