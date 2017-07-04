@@ -27,7 +27,7 @@ class Cleanup extends AbstractQueueTool
         $hasToDelete = function (Message $message) use ($maxAge) {
             return (time() - $message->getCreatedAt()->format('U')) > $maxAge; // if message was created before $maxAge
         };
-        $r += $this->cleanMessage($this->redisClient->keys($this->queue->getWorkingListPrefixName().'*'), $hasToDelete);
+        $r += $this->cleanMessage($this->queue->getWorkingLists($this->redisClient), $hasToDelete);
 
         if ($eraseReadyMessages) {
             $r += $this->cleanMessage($this->queue->getListNames(), $hasToDelete);
@@ -36,7 +36,7 @@ class Cleanup extends AbstractQueueTool
         return $r;
     }
 
-    private function cleanMessage(array $lists, callable $hasToDelete): int
+    private function cleanMessage(iterable $lists, callable $hasToDelete): int
     {
         $r = 0;
         foreach ($lists as $list) {

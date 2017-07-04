@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace M6Web\Component\RedisMessageBroker\Queue;
 
+use Predis\Client as PredisClient;
+use Predis\Collection\Iterator;
+
 /**
  * Class Definition
  * Define a queue and allow to get a list of physical redis lists
@@ -65,5 +68,17 @@ class Definition
     public function getWorkingListPrefixName(): string
     {
         return $this->name.'_working_list_';
+    }
+
+    /**
+     * san the database to get the list of working list for the queue
+     *
+     * @param PredisClient $client
+     *
+     * @return \Iterator
+     */
+    public function getWorkingLists(PredisClient $client): \Iterator
+    {
+        return new Iterator\Keyspace($client, $this->getWorkingListPrefixName().'*'); // SCAN the database
     }
 }

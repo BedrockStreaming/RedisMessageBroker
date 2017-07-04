@@ -63,9 +63,7 @@ class Consumer extends AbstractMessageHandler
         // wohaaa - nothing in the working list !
 
         // no-autoack - grab something on another working list. Retrieve from working list on another instance of Consumer
-        $workingLists = $this->redisClient->keys($this->queue->getWorkingListPrefixName().'*');
-        shuffle($workingLists);
-        foreach ($workingLists as $list) {
+        foreach ($this->queue->getWorkingLists($this->redisClient) as $list) {
             if ($message = $this->redisClient->rpoplpush($list, $list)) {
                 return self::unserializeMessage($message);
             }
@@ -103,7 +101,7 @@ class Consumer extends AbstractMessageHandler
     {
         $r = 0;
         $serializedMessage = $message->getSerializedValue();
-        foreach ($this->redisClient->keys($this->queue->getWorkingListPrefixName().'*') as $list) {
+        foreach ($this->queue->getWorkingLists($this->redisClient) as $list) {
             // erase all elements equals to the serialization of the message
             $r += $this->redisClient->lrem($list, 0, $serializedMessage);
             // delete working list if empty

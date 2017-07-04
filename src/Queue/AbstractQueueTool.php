@@ -23,16 +23,4 @@ abstract class AbstractQueueTool
         $this->queue = $queue;
         $this->redisClient = $redisClient;
     }
-
-    /**
-     * return all working lists for a queue
-     */
-    public function getWorkingLists(): array
-    {
-        if ($r = $this->redisClient->keys($this->queue->getWorkingListPrefixName().'*')) {
-            return $r;
-        }
-
-        return [];
-    }
 }

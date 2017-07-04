@@ -23,7 +23,7 @@ class Inspector extends AbstractQueueTool
     public function countInProgressMessages(): int
     {
         $i = 0;
-        foreach ($this->redisClient->keys($this->queue->getWorkingListPrefixName().'*') as $list) {
+        foreach ($this->queue->getWorkingLists($this->redisClient) as $list) {
             $i += $this->redisClient->llen($list);
         }
 
