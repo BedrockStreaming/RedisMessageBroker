@@ -41,6 +41,26 @@ $message = $consumer->getMessage();
 
 ```
 
+### inspector
+
+Inspector methods allow you to count the messages in ready or prosessing in a queue.
+
+```
+use M6Web\Component\RedisMessageBroker;
+use Predis\Client as PredisClient;
+
+$redisClient = new PredisClient(); // refer to PredisDocumentation
+$queue = new RedisMessageBroker\Queue\Definition('raoul');
+
+$inspector = new RedisMessageBroker\Inspector($queue, $redisClient);
+$countInProgress = $inspector->countInProgressMessages();
+$countReady = $inspector->countReadyMessages();
+```
+
+### cleanup
+
+Cleanup methods let you perform a cleanup in the message queue. Cleanup is very slow as all the message in the queue will be scanned. 
+
 ## queue option
 
 To avoid hotpsots (when using redis in a cluster) you can shard a queue on several lists : 
