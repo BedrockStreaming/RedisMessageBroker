@@ -16,28 +16,18 @@ class Message
      */
     private $message;
 
-    /**
-     * uniqueId of the message
-     *
-     * @var string
-     */
-    private $uniqueId;
 
     /**
      * Message constructor.
      *
      * @param string         $message   the payload message
      * @param \DateTime|null $createdAt created date will be set to now if not provided
-     * @param null           $uniqueId  uniqueId will be set via uniqid() if not provided
      */
-    public function __construct(string $message, \DateTime $createdAt = null, $uniqueId = null)
+    public function __construct(string $message, \DateTime $createdAt = null)
     {
         $this->message;
         if (null === $createdAt) {
             $this->createdAt = new \DateTime();
-        }
-        if (null === $uniqueId) {
-            $this->uniqueId = uniqid(__CLASS__, true);
         }
     }
 
@@ -49,11 +39,6 @@ class Message
     public function getMessage(): string
     {
         return $this->message;
-    }
-
-    public function getUniqueId(): string
-    {
-        return $this->uniqueId;
     }
 
     public function getSerializedValue(): string
