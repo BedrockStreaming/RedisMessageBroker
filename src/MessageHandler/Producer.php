@@ -14,11 +14,14 @@ class Producer extends AbstractMessageHandler
 {
     /**
      * produce a message
-     * select a random redis list and rpush the message in it
+     * select a random redis list and lpush the message in it
+     *
+     * @param Message $message the message
+     * @return int the number of message in the physical redis list. Be aware thats not necessary the number of the message in the queue
      */
-    public function publishMessage(Message $message)
+    public function publishMessage(Message $message): int
     {
         // push message in the list
-        $this->redisClient->lpush($this->queue->getARandomListName(), $message->getSerializedValue());
+        return $this->redisClient->lpush($this->queue->getARandomListName(), $message->getSerializedValue());
     }
 }
