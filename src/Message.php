@@ -25,8 +25,9 @@ class Message
      */
     public function __construct(string $message, \DateTime $createdAt = null)
     {
-        $this->message;
-        if (null === $createdAt) {
+        $this->message = $message;
+        $this->createdAt = $createdAt;
+        if (null === $this->createdAt) {
             $this->createdAt = new \DateTime();
         }
     }
@@ -48,6 +49,6 @@ class Message
 
     public static function unserializeMessage(string $message): Message
     {
-        return unserialize($message, ['allowed_classes' => ['Message']]);
+        return unserialize($message, ['allowed_classes' => ['M6Web\Component\RedisMessageBroker\Message', 'Datetime']]);
     }
 }
