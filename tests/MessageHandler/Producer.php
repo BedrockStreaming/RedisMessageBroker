@@ -6,7 +6,6 @@ use \mageekguy\atoum;
 
 use M6Web\Component\RedisMessageBroker\Queue\Definition;
 use M6Web\Component\RedisMessageBroker\Message;
-use Predis;
 
 class Producer extends atoum\test
 {
