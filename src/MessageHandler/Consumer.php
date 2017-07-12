@@ -6,6 +6,7 @@ namespace M6Web\Component\RedisMessageBroker\MessageHandler;
 
 use M6Web\Component\RedisMessageBroker\Message;
 use M6Web\Component\RedisMessageBroker\Queue;
+use Predis\Client as PredisClient;
 
 /**
  * Class Consumer
@@ -32,7 +33,7 @@ class Consumer extends AbstractMessageHandler
     public function __construct(Queue\Definition $queue, PredisClient $redisClient, string $uniqueId)
     {
         $this->uniqueId = $uniqueId;
-        parent::_construct($queue, $redisClient);
+        parent::__construct($queue, $redisClient);
     }
 
     public function setNoAutoAck()
