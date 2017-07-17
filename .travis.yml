@@ -12,4 +12,5 @@ before_script:
   - php composer.phar install --dev
 
 script:
+  - make cs-ci
   - bin/atoum -d tests

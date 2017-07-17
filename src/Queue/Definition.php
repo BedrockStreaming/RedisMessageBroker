@@ -57,7 +57,7 @@ class Definition
 
     public function getARandomListName(): string
     {
-        return array_rand($this->getListNames());
+        return $this->getListNames()[array_rand($this->getListNames())];
     }
 
     public function getName(): string

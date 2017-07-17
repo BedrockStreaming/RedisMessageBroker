@@ -16,7 +16,6 @@ class Message
      */
     private $message;
 
-
     /**
      * Message constructor.
      *
