@@ -43,7 +43,7 @@ class Consumer extends AbstractMessageHandler
 
     public function getMessage(): ?Message
     {
-        $lists = $this->queue->getListNames();
+        $lists = iterator_to_array($this->queue->getQueueLists($this->redisClient));
         shuffle($lists);
 
         // #1 autoack
@@ -73,6 +73,11 @@ class Consumer extends AbstractMessageHandler
         // grab something in the queue and put it in the workinglist while returning the message
         foreach ($lists as $list) {
             if ($message = $this->redisClient->rpoplpush($list, $this->getWorkingList())) {
+                // if $list is empty delete it
+                if (!$this->redisClient->llen($list)) {
+                    $this->redisClient->del($list);
+                }
+
                 return self::unserializeMessage($message);
             }
         }

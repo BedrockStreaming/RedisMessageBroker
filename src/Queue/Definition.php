@@ -48,7 +48,7 @@ class Definition
         $t = range(1, $this->listCount);
         array_walk(
             $t, function (&$v) {
-                $v = $this->name.'-'.$v;
+                $v = $this->getListPrefixName().'_'.$v;
             }
         );
 
@@ -63,6 +63,11 @@ class Definition
     public function getName(): string
     {
         return $this->name;
+    }
+
+    public function getListPrefixName(): string
+    {
+        return $this->name.'_list_';
     }
 
     public function getWorkingListPrefixName(): string
@@ -80,5 +85,10 @@ class Definition
     public function getWorkingLists(PredisClient $client): \Iterator
     {
         return new Iterator\Keyspace($client, $this->getWorkingListPrefixName().'*'); // SCAN the database
+    }
+
+    public function getQueueLists(PredisClient $client): \Iterator
+    {
+        return new Iterator\Keyspace($client, $this->getListPrefixName().'*'); // SCAN the database
     }
 }

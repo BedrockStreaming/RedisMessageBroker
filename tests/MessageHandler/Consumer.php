@@ -94,4 +94,41 @@ class Consumer extends atoum\test
                     ->isEqualTo(0)
             ;
     }
+
+    public function testConsumeOnMultipleList()
+    {
+        $this
+            ->if(
+                $queue = new Definition('queue3'.uniqid('test_redis', false), 10000), // unique queue with a lot of list
+                $redisClient = new \Predis\Client(),
+                $producer = new Producer($queue, $redisClient),
+                $message = new Message('message in the bottle'),
+                $producer->publishMessage($message),
+                $inspector = new Inspector($queue, $redisClient)
+            )
+            ->then
+                ->integer($inspector->countListQueues())
+                    ->isEqualTo(1) // one list is created
+                ->integer($inspector->countWorkingListQueues())
+                    ->isEqualTo(0)
+            ->if(
+                $consumer = $this->newTestedInstance($queue, $redisClient, 'testConsumer3'.uniqid('test_redis', false)),
+                $consumer->setNoAutoAck(),
+                $message = $consumer->getMessage()
+            )
+            ->then
+                ->integer($inspector->countListQueues())
+                    ->isEqualTo(0)
+                ->integer($inspector->countWorkingListQueues())
+                    ->isEqualTo(1) // one working list is created
+            ->if(
+                $consumer->ack($message)
+            )
+            ->then
+            ->integer($inspector->countListQueues())
+                ->isEqualTo(0)
+            ->integer($inspector->countWorkingListQueues())
+                ->isEqualTo(0) // working list is empty so has been deleted
+        ;
+    }
 }
