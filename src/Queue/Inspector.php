@@ -20,6 +20,16 @@ class Inspector extends AbstractQueueTool
         return $i;
     }
 
+    public function countListQueues(): int
+    {
+        return iterator_count($this->queue->getQueueLists($this->redisClient));
+    }
+
+    public function countWorkingListQueues(): int
+    {
+        return iterator_count($this->queue->getWorkingLists($this->redisClient));
+    }
+
     public function countInProgressMessages(): int
     {
         $i = 0;

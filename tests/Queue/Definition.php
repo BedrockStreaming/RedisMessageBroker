@@ -13,7 +13,7 @@ class Definition extends atoum\test
             ->then
                 ->array($l = $t->getListNames())
                 ->isIdentiCalTo(
-                    ['raoul-1', 'raoul-2', 'raoul-3', 'raoul-4' ]
+                    ['raoul_list__1', 'raoul_list__2', 'raoul_list__3', 'raoul_list__4' ]
                 )
             ;
     }
