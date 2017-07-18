@@ -43,7 +43,7 @@ $message = $consumer->getMessage();
 
 ### inspector
 
-Inspector methods allow you to count the messages in ready or prosessing in a queue.
+Inspector methods allow you to count the messages in ready or processing in a queue.
 
 ```
 use M6Web\Component\RedisMessageBroker;
@@ -71,7 +71,12 @@ $queue = new RedisMessageBroker\Queue\Definition('raoul', 10); // shard on 10 li
 
 In this mode, messages will be written and read among the 10 lists. FIFO is no more guaranteed.
 
-## manual message acknowledgment
+## consumer options 
+
+### manual message acknowledgment
+
+with `setNoAutoAck()`
+
 
 ```
 use M6Web\Component\RedisMessageBroker;
@@ -88,3 +93,16 @@ if ($message) {
     $consumer->ack($message); // erase the message from the working list
 }
 ```
+
+### look for old messages not acked by other consumers
+
+Each consumer got an unique Id defined during the construction of the object. This Id allow the consumer to define a unique working list where a message is storing between the `getMessage` and the `ack`.
+Is it possible to tell a consumer to look on other consumer working lists and get a message from those lists with the `setTimeOldMessage` method. 
+ 
+ ```
+ $consumer->setNoAutoAck();
+ $consumer->setTimeOldMessage(360);
+ ```
+ 
+Doing this, the consumer will first look in non acked message in his own working list. Then it will check in all the working list of the other workers (concerned by the queue) if there is a message more than 360s old. If so the message is returned and be acked normally.
+

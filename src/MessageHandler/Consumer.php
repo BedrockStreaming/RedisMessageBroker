@@ -23,6 +23,14 @@ class Consumer extends AbstractMessageHandler
     private $autoAck = true;
 
     /**
+     * number of seconds to check before a message was considered old in a working list
+     * leave it to zero to deactivate
+     *
+     * @var int
+     */
+    protected $timeOldMessage = 0;
+
+    /**
      * uniqueId can be used to setup a unique workling list
      *
      * @var string
@@ -39,6 +47,11 @@ class Consumer extends AbstractMessageHandler
     public function setNoAutoAck()
     {
         $this->autoAck = false;
+    }
+
+    public function setTimeOldMessage(int $v): void
+    {
+        $this->timeOldMessage = $v;
     }
 
     public function getMessage(): ?Message
@@ -64,9 +77,16 @@ class Consumer extends AbstractMessageHandler
         // wohaaa - nothing in the working list !
 
         // no-autoack - grab something on another working list. Retrieve from working list on another instance of Consumer
-        foreach ($this->queue->getWorkingLists($this->redisClient) as $list) {
-            if ($message = $this->redisClient->rpoplpush($list, $list)) {
-                return self::unserializeMessage($message);
+        // this is done only if the message is old enough to be considered as lost
+        if ($this->timeOldMessage) {
+            foreach ($this->queue->getWorkingLists($this->redisClient) as $list) {
+                if ($message = $this->redisClient->rpoplpush($list, $list)) {
+                    // check if message is old enough
+                    $message = self::unserializeMessage($message);
+                    if ((time() - $message->getCreatedAt()->format('U')) > $this->timeOldMessage) {
+                        return $message;
+                    }
+                }
             }
         }
 
