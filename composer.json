@@ -1,7 +1,7 @@
 {
   "name" : "m6web/redis-message-broker",
   "description" : "message broker component backed with redis",
-  "keywords": ["redis"],
+  "keywords": ["redis", "queue", "messaging"],
   "type": "library",
   "license": "MIT",
   "authors": [

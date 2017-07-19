@@ -2,7 +2,7 @@
 
 This component will help you to build a messages brocker system over a [redis](redis.io) backend. It will take advantage of the redis cluster capabilities with the possibility to shard messages into several redis lists while producing messages. Consumer, in no auto-ack mode, implements a working list to be sure not to loose any messages when processing fail. 
  
-By design, producing is super fast (one Redis command) and consuming car be slow.
+By design, producing is super fast (one Redis command) and consuming can be slow if you want to ack messages manually.
  
 You should use it with Redis >= 2.8.
 
@@ -96,7 +96,7 @@ if ($message) {
 
 ### look for old messages not acked by other consumers
 
-Each consumer got an unique Id defined during the construction of the object. This Id allow the consumer to define a unique working list where a message is storing between the `getMessage` and the `ack`.
+Each consumer got an unique Id defined during the construction of the object. This Id allow the consumer to define a unique working list where a message is stored between the `getMessage` and the `ack`.
 Is it possible to tell a consumer to look on other consumer working lists and get a message from those lists with the `setTimeOldMessage` method. 
  
  ```
@@ -104,5 +104,5 @@ Is it possible to tell a consumer to look on other consumer working lists and ge
  $consumer->setTimeOldMessage(360);
  ```
  
-Doing this, the consumer will first look in non acked message in his own working list. Then it will check in all the working list of the other workers (concerned by the queue) if there is a message more than 360s old. If so the message is returned and be acked normally.
+Doing this, the consumer will first look in non acked message in his own working list. Then it will check in all the working list of the other workers (concerned by the queue) if there is a message more than 360s old. If so the message is returned and be acked normally (this can be slow). Finally, he will look on his ready message list.
 
