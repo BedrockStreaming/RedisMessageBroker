@@ -10,7 +10,7 @@ You should use it with Redis >= 2.8.
 
 ### producer
 
-```
+```php
 <?php
 use M6Web\Component\RedisMessageBroker;
 use Predis\Client as PredisClient;
@@ -28,7 +28,7 @@ $producer->publishMessage($message);
 
 Consumer should be wrapped in a worker. A unique Id should be pass to the consumer constructor. If you work with a worker, uniqId has to be constant per worker.
 
-```
+```php
 <?php
 use M6Web\Component\RedisMessageBroker;
 use Predis\Client as PredisClient;
@@ -45,7 +45,7 @@ $message = $consumer->getMessage();
 
 Inspector methods allow you to count the messages in ready or processing in a queue.
 
-```
+```php
 use M6Web\Component\RedisMessageBroker;
 use Predis\Client as PredisClient;
 
@@ -65,7 +65,7 @@ Cleanup methods let you perform a cleanup in the message queue. Cleanup is very 
 
 To avoid hotpsots (when using redis in a cluster) you can shard a queue on several lists : 
 
-```
+```php
 $queue = new RedisMessageBroker\Queue\Definition('raoul', 10); // shard on 10 lists
 ```
 
@@ -78,7 +78,7 @@ In this mode, messages will be written and read among the 10 lists. FIFO is no m
 with `setNoAutoAck()`
 
 
-```
+```php
 use M6Web\Component\RedisMessageBroker;
 use Predis\Client as PredisClient;
 
@@ -99,7 +99,7 @@ if ($message) {
 Each consumer got an unique Id defined during the construction of the object. This Id allow the consumer to define a unique working list where a message is stored between the `getMessage` and the `ack`.
 Is it possible to tell a consumer to look on other consumer working lists and get a message from those lists with the `setTimeOldMessage` method. 
  
- ```
+ ```php
  $consumer->setNoAutoAck();
  $consumer->setTimeOldMessage(360);
  ```
