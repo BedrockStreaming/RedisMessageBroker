@@ -132,7 +132,6 @@ class Consumer extends atoum\test
         ;
     }
 
-
     public function testGrabbingOldMessage()
     {
         $this

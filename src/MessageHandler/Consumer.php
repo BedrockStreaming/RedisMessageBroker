@@ -56,66 +56,33 @@ class Consumer extends AbstractMessageHandler
 
     public function getMessage(): ?Message
     {
+        $messages = $this->getMessages(1);
+
+        return !$messages->isEmpty() ? $messages->shift() : null;
+    }
+
+    /**
+     * @param int $limit
+     *
+     * @return \SplStack
+     */
+    public function getMessages(int $limit): \SplStack
+    {
         $lists = iterator_to_array($this->queue->getQueueLists($this->redisClient));
         shuffle($lists);
 
         // #1 autoack
         if ($this->autoAck) {
-            foreach ($lists as $list) {
-                if ($message = $this->redisClient->rpop($list)) {
-                    return self::unserializeMessage($message);
-                }
-            }
+            return $this->getMessageFromQueueLists($lists, $limit);
         }
 
         // #2 no-autoack - messages have to be acked manually via ->ack(message)
-        // anything in the working list ? if so grab one
-        if ($message = $this->redisClient->rpoplpush($this->getWorkingList(), $this->getWorkingList())) {
-            return self::unserializeMessage($message);
-        }
-
-        // wohaaa - nothing in the working list !
-
-        // no-autoack - grab something on another working list. Retrieve from working list on another instance of Consumer
-        // this is done only if the message is old enough to be considered as lost
-        if ($this->timeOldMessage) {
-            foreach ($this->queue->getWorkingLists($this->redisClient) as $list) {
-                if ($message = $this->redisClient->rpoplpush($list, $list)) {
-                    // check if message is old enough
-                    $message = self::unserializeMessage($message);
-                    if ((time() - $message->getCreatedAt()->format('U')) > $this->timeOldMessage) {
-                        return $message;
-                    }
-                }
-            }
-        }
-
-        // grab something in the queue and put it in the workinglist while returning the message
-        foreach ($lists as $list) {
-            if ($message = $this->redisClient->rpoplpush($list, $this->getWorkingList())) {
-                // if $list is empty delete it
-                if (!$this->redisClient->llen($list)) {
-                    $this->redisClient->del($list);
-                }
-
-                return self::unserializeMessage($message);
-            }
-        }
-
-        return null;
+        return $this->getMessagesFromWorkingLists($lists, $limit);
     }
 
     public static function unserializeMessage(string $message): Message
     {
         return Message::unserializeMessage($message);
-    }
-
-    /**
-     * the working list has to be unique per consumer worker
-     */
-    protected function getWorkingList(): string
-    {
-        return $this->queue->getWorkingListPrefixName().'-'.$this->uniqueId;
     }
 
     /**
@@ -140,5 +107,93 @@ class Consumer extends AbstractMessageHandler
         }
 
         return $r;
+    }
+
+    /**
+     * the working list has to be unique per consumer worker
+     */
+    protected function getWorkingList(): string
+    {
+        return $this->queue->getWorkingListPrefixName().'-'.$this->uniqueId;
+    }
+
+    /**
+     * @param array $lists
+     * @param int   $nbMessage
+     *
+     * @return \SplStack
+     */
+    protected function getMessageFromQueueLists(array $lists, int $nbMessage): \SplStack
+    {
+        $messages = new \SplStack();
+
+        foreach ($lists as $list) {
+            while ($messages->count() < $nbMessage && $message = $this->redisClient->rpop($list)) {
+                $messages->push(self::unserializeMessage($message));
+            }
+
+            if ($messages->count() >= $nbMessage) {
+                break;
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
+     * messages have to be acked manually via ->ack(message)
+     *
+     * - Get message from working list
+     *
+     * - grab something on another working list. Retrieve from working list on another instance of Consumer
+     * this is done only if the message is old enough to be considered as lost
+     *
+     * - get messages from queue list and add them in working queue
+     *
+     * @param array $lists
+     * @param int   $nbMessage
+     *
+     * @return \SplStack
+     */
+    protected function getMessagesFromWorkingLists(array $lists, int $nbMessage): \SplStack
+    {
+        $messages = new \SplStack();
+
+        // anything in the working list ? if so grab element stay on working list (not ack)
+        foreach ($this->redisClient->lrange($this->getWorkingList(), 0, $nbMessage - 1) as $message) {
+            $messages->push(self::unserializeMessage($message));
+        }
+
+        // wohaaa - nothing in the working list !
+        // grab something on another working list. Retrieve from working list on another instance of Consumer
+        // this is done only if the message is old enough to be considered as lost
+        if ($this->timeOldMessage && $messages->count() < $nbMessage) {
+            foreach ($this->queue->getWorkingLists($this->redisClient) as $list) {
+                foreach ($this->redisClient->lrange($list, 0, ($nbMessage - $messages->count() - 1)) as $message) {
+                    $message = self::unserializeMessage($message);
+                    if ((time() - $message->getCreatedAt()->format('U')) > $this->timeOldMessage) {
+                        $messages->push($message);
+                    }
+                }
+            }
+        }
+
+        // grab something in the queue and put it in the workinglist while returning the message
+        foreach ($lists as $list) {
+            while ($messages->count() < $nbMessage && $message = $this->redisClient->rpoplpush($list, $this->getWorkingList())) {
+                $messages->push(self::unserializeMessage($message));
+            }
+
+            if ($messages->count() >= $nbMessage) {
+                break;
+            }
+
+            // if $list is empty delete it
+            if (!$this->redisClient->llen($list)) {
+                $this->redisClient->del($list);
+            }
+        }
+
+        return $messages;
     }
 }
