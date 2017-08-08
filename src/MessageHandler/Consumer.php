@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace M6Web\Component\RedisMessageBroker\MessageHandler;
 
-use M6Web\Component\RedisMessageBroker\Message;
+use M6Web\Component\RedisMessageBroker\Event\ConsumerEvent;
+use M6Web\Component\RedisMessageBroker\MessageEnvelope;
 use M6Web\Component\RedisMessageBroker\Queue;
 use Predis\Client as PredisClient;
 
@@ -21,14 +22,6 @@ use Predis\Client as PredisClient;
 class Consumer extends AbstractMessageHandler
 {
     private $autoAck = true;
-
-    /**
-     * number of seconds to check before a message was considered old in a working list
-     * leave it to zero to deactivate
-     *
-     * @var int
-     */
-    protected $timeOldMessage = 0;
 
     /**
      * uniqueId can be used to setup a unique workling list
@@ -49,12 +42,7 @@ class Consumer extends AbstractMessageHandler
         $this->autoAck = false;
     }
 
-    public function setTimeOldMessage(int $v): void
-    {
-        $this->timeOldMessage = $v;
-    }
-
-    public function getMessage(): ?Message
+    public function getMessage(): ?MessageEnvelope
     {
         $lists = iterator_to_array($this->queue->getQueueLists($this->redisClient));
         shuffle($lists);
@@ -63,51 +51,90 @@ class Consumer extends AbstractMessageHandler
         if ($this->autoAck) {
             foreach ($lists as $list) {
                 if ($message = $this->redisClient->rpop($list)) {
-                    return self::unserializeMessage($message);
+                    return MessageEnvelope::unserializeMessage($message);
                 }
             }
         }
 
         // #2 no-autoack - messages have to be acked manually via ->ack(message)
-        // anything in the working list ? if so grab one
-        if ($message = $this->redisClient->rpoplpush($this->getWorkingList(), $this->getWorkingList())) {
-            return self::unserializeMessage($message);
-        }
-
-        // wohaaa - nothing in the working list !
-
-        // no-autoack - grab something on another working list. Retrieve from working list on another instance of Consumer
-        // this is done only if the message is old enough to be considered as lost
-        if ($this->timeOldMessage) {
-            foreach ($this->queue->getWorkingLists($this->redisClient) as $list) {
-                if ($message = $this->redisClient->rpoplpush($list, $list)) {
-                    // check if message is old enough
-                    $message = self::unserializeMessage($message);
-                    if ((time() - $message->getCreatedAt()->format('U')) > $this->timeOldMessage) {
-                        return $message;
-                    }
-                }
-            }
-        }
-
         // grab something in the queue and put it in the workinglist while returning the message
         foreach ($lists as $list) {
             if ($message = $this->redisClient->rpoplpush($list, $this->getWorkingList())) {
-                // if $list is empty delete it
-                if (!$this->redisClient->llen($list)) {
-                    $this->redisClient->del($list);
-                }
-
-                return self::unserializeMessage($message);
+                return MessageEnvelope::unserializeMessage($message);
             }
         }
 
         return null;
     }
 
-    public static function unserializeMessage(string $message): Message
+    /**
+     * @param MessageEnvelope $message this message will be acked in the working lists
+     *
+     * @return int the number of messages acked
+     */
+    public function ack(MessageEnvelope $message): int
     {
-        return Message::unserializeMessage($message);
+        $nbMessageAck = $this->removeMessageInWorkingList($message);
+
+        if ($this->eventCallback) {
+            ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::ACK_EVENT, $nbMessageAck, $this->getWorkingList()));
+        }
+
+        return $nbMessageAck;
+    }
+
+    /**
+     * @return int the number of messages acked
+     */
+    public function ackAll(): int
+    {
+        $nbMessageAck = $this->removeList($this->getWorkingList());
+
+        if ($this->eventCallback) {
+            ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::ACK_EVENT, $nbMessageAck, $this->getWorkingList()));
+        }
+
+        return $nbMessageAck;
+    }
+
+    /**
+     * @param MessageEnvelope $message
+     *
+     * @return int the number of messages unack
+     */
+    public function unack(MessageEnvelope $message): int
+    {
+        $queueList = $this->queue->getARandomListName();
+
+        if ($nbMessageUnack = $this->removeMessageInWorkingList($message)) {
+            $this->redisClient->lpush($queueList, $message->getSerializedValue());
+        }
+
+        if ($this->eventCallback) {
+            ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::UNACK_EVENT, $nbMessageUnack, $queueList));
+        }
+
+        return $nbMessageUnack;
+    }
+
+    /**
+     * @return int the number of messages unack
+     */
+    public function unackAll(): int
+    {
+        $queueList = $this->queue->getARandomListName();
+        $nbMessageUnack = 0;
+
+        do {
+            $message = $this->redisClient->rpoplpush($this->getWorkingList(), $queueList);
+            ++$nbMessageUnack;
+        } while (!is_null($message));
+
+        if ($this->eventCallback) {
+            ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::UNACK_EVENT, $nbMessageUnack, $queueList));
+        }
+
+        return $nbMessageUnack;
     }
 
     /**
@@ -119,26 +146,29 @@ class Consumer extends AbstractMessageHandler
     }
 
     /**
-     * @param Message $message this message will be acked in the working lists
+     * @param MessageEnvelope $message
      *
-     * @return int the number of messages acked
+     * @return int the number of messages deleted
      */
-    public function ack(Message $message): int
+    protected function removeMessageInWorkingList(MessageEnvelope $message)
     {
-        $r = 0;
         $serializedMessage = $message->getSerializedValue();
-        foreach ($this->queue->getWorkingLists($this->redisClient) as $list) {
-            // erase all elements equals to the serialization of the message
-            $r += $this->redisClient->lrem($list, 0, $serializedMessage);
-            // delete working list if empty
-            if (!$this->redisClient->llen($list)) {
-                $this->redisClient->del($list);
-            }
-            if ($r > 0) { // something got erased, stop looking
-                return $r;
-            }
-        }
 
-        return $r;
+        return $this->redisClient->lrem($this->getWorkingList(), 0, $serializedMessage);
+    }
+
+    /**
+     * @param string $list
+     *
+     * @return int nb of elements in deleted list
+     */
+    protected function removeList(string $list)
+    {
+        $this->redisClient->multi();
+        $this->redisClient->llen($list);
+        $this->redisClient->del($list);
+        $result = $this->redisClient->exec();
+
+        return $result[0] ?? 0;
     }
 }

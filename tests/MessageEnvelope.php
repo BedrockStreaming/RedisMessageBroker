@@ -4,16 +4,16 @@
 namespace M6Web\Component\RedisMessageBroker\tests\units;
 
 
-use M6Web\Component\RedisMessageBroker\Message as Base;
+use M6Web\Component\RedisMessageBroker\MessageEnvelope as Base;
 use \mageekguy\atoum;
 
 
-class Message extends atoum\test
+class MessageEnvelope extends atoum\test
 {
 
     public function testBasics() {
         $this
-            ->if($t = $this->newTestedInstance('raoul the message', \DateTime::createFromFormat('Y-m-d H:i:s', '2017-07-10 14:05:00')))
+            ->if($t = $this->newTestedInstance(uniqid(), 'raoul the message', \DateTime::createFromFormat('Y-m-d H:i:s', '2017-07-10 14:05:00')))
             ->then
                 ->object($t->getCreatedAt())
                 ->isInstanceOf('DateTime')
@@ -28,7 +28,7 @@ class Message extends atoum\test
     {
         $this
             ->if(
-                $message = $this->newTestedInstance('raoul the message'),
+                $message = $this->newTestedInstance(uniqid(), 'raoul the message'),
                 $date = $message->getCreatedAt(),
                 $stringMessage = $message->getMessage()
                 )

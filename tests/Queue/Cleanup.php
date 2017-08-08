@@ -9,7 +9,7 @@ use \mageekguy\atoum;
 use M6Web\Component\RedisMessageBroker\Queue\{Definition, Inspector};
 
 use M6Web\Component\RedisMessageBroker\MessageHandler\Producer;
-use M6Web\Component\RedisMessageBroker\Message;
+use M6Web\Component\RedisMessageBroker\MessageEnvelope;
 
 class Cleanup extends atoum\test
 {
@@ -20,8 +20,8 @@ class Cleanup extends atoum\test
                 $queue = new Definition('queue1'.uniqid('test_redis', false)),
                 $redisClient = new \Predis\Client(),
                 $producer = new Producer($queue, $redisClient),
-                $message = new Message('message in the bottle 1'),
-                $message2 = new Message('message in the bottle 2'),
+                $message = new MessageEnvelope(uniqid(), 'message in the bottle 1'),
+                $message2 = new MessageEnvelope(uniqid(), 'message in the bottle 2'),
                 $producer->publishMessage($message),
                 $producer->publishMessage($message2),
                 $inspector = new Inspector($queue, $redisClient),
@@ -47,8 +47,8 @@ class Cleanup extends atoum\test
                 $queue = new Definition('queue2'.uniqid('test_redis', false)),
                 $redisClient = new \Predis\Client(),
                 $producer = new Producer($queue, $redisClient),
-                $message = new Message('message in the bottle 1'),
-                $message2 = new Message('message in the bottle 2'),
+                $message = new MessageEnvelope(uniqid(), 'message in the bottle 1'),
+                $message2 = new MessageEnvelope(uniqid(), 'message in the bottle 2'),
                 $producer->publishMessage($message),
                 $producer->publishMessage($message2),
                 $inspector = new Inspector($queue, $redisClient),

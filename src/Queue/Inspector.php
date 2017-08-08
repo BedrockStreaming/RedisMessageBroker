@@ -39,4 +39,14 @@ class Inspector extends AbstractQueueTool
 
         return $i;
     }
+
+    public function countInErrorMessages(): int
+    {
+        $i = 0;
+        foreach ($this->queue->getDeadLetterLists($this->redisClient) as $list) {
+            $i += $this->redisClient->llen($list);
+        }
+
+        return $i;
+    }
 }

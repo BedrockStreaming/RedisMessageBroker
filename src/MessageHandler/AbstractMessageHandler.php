@@ -19,9 +19,26 @@ abstract class AbstractMessageHandler
      */
     protected $redisClient;
 
+    /**
+     * @var \Closure
+     */
+    protected $eventCallback;
+
     public function __construct(Queue\Definition $queue, PredisClient $redisClient)
     {
         $this->queue = $queue;
         $this->redisClient = $redisClient;
+    }
+
+    /**
+     * @param \Closure $closure
+     *
+     * @return $this
+     */
+    public function setEventCallback(\Closure $closure)
+    {
+        $this->eventCallback = $closure;
+
+        return $this;
     }
 }
