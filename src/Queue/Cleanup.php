@@ -21,7 +21,7 @@ class Cleanup extends AbstractQueueTool
      *
      * @return int number of erased messages
      */
-    public function cleanOldMessages(int $maxAge, bool $eraseReadyMessages = false): int
+    public function cleanWorkingListsOldMessages(int $maxAge, bool $eraseReadyMessages = false): int
     {
         $r = 0;
         $hasToDelete = function (MessageEnvelope $message) use ($maxAge) {
@@ -31,6 +31,27 @@ class Cleanup extends AbstractQueueTool
 
         if ($eraseReadyMessages) {
             $r += $this->cleanMessage($this->queue->getListNames(), $hasToDelete);
+        }
+
+        return $r;
+    }
+
+    /**
+     * this method delete deadletter lists
+     *
+     * @return int number of deleted messages in dead letter lists
+     */
+    public function cleanDeadLetterLists(): int
+    {
+        $r = 0;
+
+        foreach ($this->queue->getDeadLetterLists($this->redisClient) as $deadLetterList) {
+            $this->redisClient->multi();
+            $this->redisClient->llen($deadLetterList);
+            $this->redisClient->del($deadLetterList);
+            $result = $this->redisClient->exec();
+
+            $r += $result[0] ?? 0;
         }
 
         return $r;

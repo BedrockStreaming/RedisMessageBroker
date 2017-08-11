@@ -31,7 +31,7 @@ class LostMessagesConsumer extends atoum\test
             ->then(
                 sleep(10), // build an 20s old message
                 $lostMessagesConsumer = $this->newTestedInstance($queue, $redisClient, 3600),
-                $lostMessagesConsumer->checkWorkingLists()
+                $lostMessagesConsumer->requeueOldMessages()
             )
             ->then
                 ->integer($inspector->countReadyMessages())
@@ -40,7 +40,7 @@ class LostMessagesConsumer extends atoum\test
                 ->isEqualTo(1)
             ->if(
                 $lostMessagesConsumer = $this->newTestedInstance($queue, $redisClient, 5),
-                $lostMessagesConsumer->checkWorkingLists()
+                $lostMessagesConsumer->requeueOldMessages()
             ) // consider now just 5s to get an old message
             ->then
                 ->integer($inspector->countReadyMessages())
@@ -71,7 +71,7 @@ class LostMessagesConsumer extends atoum\test
             ->then(
                 sleep(2), // build an 2s old message, retry set to 1
                 $lostMessagesConsumer = $this->newTestedInstance($queue, $redisClient, 1, 1),
-                $lostMessagesConsumer->checkWorkingLists()
+                $lostMessagesConsumer->requeueOldMessages()
             )
             ->then
                 ->integer($inspector->countReadyMessages())

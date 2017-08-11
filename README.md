@@ -125,7 +125,7 @@ The `maxRetry` parameter will put a message in a dead letter list when the retry
  $redisClient = new PredisClient(); // refer to PredisDocumentation
  $queue = new RedisMessageBroker\Queue\Definition('raoul');
  $consumer = new RedisMessageBroker\MessageHandler\LostMessagesConsumer($queue, $redisClient, 360, 3);
- $consumer->checkWorkingLists();
+ $consumer->requeueOldMessages();
  ```
 
  `messageTtl` parameter need to be superior of your max time to process a message. (Otherwise it will consider a message old when its processing)

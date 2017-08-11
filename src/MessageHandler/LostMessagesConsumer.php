@@ -10,19 +10,14 @@ use M6Web\Component\RedisMessageBroker\Queue;
 use Predis\Client as PredisClient;
 
 /**
- * Class Consumer
+ * Class LostMessagesConsumer
  *
- * Consume messages
- * two modes are available : auto-ack or no-ack
- * auto-ack mode will directly fech and erase the message from the queue. Its faster but unsafe.
- * ack mode will fetch the the message in a list unique for the worker. You will have to ack the message to erase it of the process list. Consumption is slower in ack mode
- *
- * working list as to be unique
+ * Get old messages in working lists and add them to queue list if the retry is'nt reached
  */
 class LostMessagesConsumer extends AbstractMessageHandler
 {
     /**
-     * number of seconds to check before a message was considered old in a working list
+     * number of seconds when the message is considered old in a working list
      *
      * @var int
      */
@@ -46,12 +41,19 @@ class LostMessagesConsumer extends AbstractMessageHandler
         $this->messageTtl = $messageTtl;
     }
 
-    public function checkWorkingLists()
+    /**
+     * Requeue message with date superior to message ttl
+     * Then max retry reached, message is put in dead letter list
+     */
+    public function requeueOldMessages()
     {
-        array_map([$this, 'checkList'], iterator_to_array($this->queue->getWorkingLists($this->redisClient)));
+        array_map(
+            [$this, 'requeueOldMessageFromList'],
+            iterator_to_array($this->queue->getWorkingLists($this->redisClient))
+        );
     }
 
-    protected function checkList(string $list)
+    protected function requeueOldMessageFromList(string $list)
     {
         for ($i = 0, $n = $this->redisClient->llen($list); $i < $n; ++$i) {
             $serializedMessage = $this->redisClient->rpoplpush($list, $list);
