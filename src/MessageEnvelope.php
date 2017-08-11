@@ -35,10 +35,10 @@ class MessageEnvelope
      * Message constructor.
      *
      * @param string         $id        message id
-     * @param string         $message   the payload message
+     * @param mixed          $message   the payload message
      * @param \DateTime|null $createdAt created date will be set to now if not provided
      */
-    public function __construct(string $id, string $message, \DateTime $createdAt = null)
+    public function __construct(string $id, $message, \DateTime $createdAt = null)
     {
         $this->id = $id;
         $this->message = $message;
@@ -84,7 +84,7 @@ class MessageEnvelope
         return $this->retry;
     }
 
-    public function getMessage(): string
+    public function getMessage()
     {
         return $this->message;
     }
@@ -94,8 +94,10 @@ class MessageEnvelope
         return serialize($this);
     }
 
-    public static function unserializeMessage(string $message): MessageEnvelope
+    public static function unserializeMessage(string $message): ?MessageEnvelope
     {
-        return unserialize($message, ['allowed_classes' => ['M6Web\Component\RedisMessageBroker\MessageEnvelope', 'DateTime']]);
+        $unserializeMessage = unserialize($message);
+
+        return ($unserializeMessage instanceof self) ? $unserializeMessage : null;
     }
 }
