@@ -17,7 +17,7 @@ use Predis\Client as PredisClient;
 
 $redisClient = new PredisClient(); // refer to PredisDocumentation
 $queue = new RedisMessageBroker\Queue\Definition('raoul');
-$message = new RedisMessageBroker\Message('un message');
+$message = new RedisMessageBroker\MessageEnvelope(uniqid(), 'un message');
 
 $producer = new RedisMessageBroker\MessageHandler\Producer($queue, $redisClient);
 $producer->publishMessage($message);
@@ -35,7 +35,7 @@ use Predis\Client as PredisClient;
 
 $redisClient = new PredisClient(); // refer to PredisDocumentation
 $queue = new RedisMessageBroker\Queue\Definition('raoul');
-$consumer = new RedisMessageBroker\MessageHandler\Consumer($squeue, $redisClient, uniqid());
+$consumer = new RedisMessageBroker\MessageHandler\Consumer($queue, $redisClient, uniqid());
 
 $message = $consumer->getMessage();
 
@@ -46,6 +46,7 @@ $message = $consumer->getMessage();
 Inspector methods allow you to count the messages in ready or processing in a queue.
 
 ```php
+<?php
 use M6Web\Component\RedisMessageBroker;
 use Predis\Client as PredisClient;
 
@@ -94,12 +95,13 @@ with `setNoAutoAck()`
 
 
 ```php
+<?php
 use M6Web\Component\RedisMessageBroker;
 use Predis\Client as PredisClient;
 
 $redisClient = new PredisClient(); // refer to PredisDocumentation
 $queue = new RedisMessageBroker\Queue\Definition('raoul');
-$consumer = new RedisMessageBroker\MessageHandler\Consumer($squeue, $redisClient, uniqid());
+$consumer = new RedisMessageBroker\MessageHandler\Consumer($queue, $redisClient, uniqid());
 $consumer->setNoAutoAck();
 
 $message = $consumer->getMessage();
@@ -109,15 +111,21 @@ if ($message) {
 }
 ```
 
-### look for old messages not acked by other consumers
+### look for old messages not acked by consumers
 
 Each consumer got an unique Id defined during the construction of the object. This Id allow the consumer to define a unique working list where a message is stored between the `getMessage` and the `ack`.
-Is it possible to tell a consumer to look on other consumer working lists and get a message from those lists with the `setTimeOldMessage` method. 
+Is it possible to use LostMessageConsumer class to look on consumer working lists and move message more than x second old (`messageTtl` parameter) from those lists to a queue list.
+The `maxRetry` parameter will put a message in a dead letter list when the retry number is reached.
  
  ```php
- $consumer->setNoAutoAck();
- $consumer->setTimeOldMessage(360);
- ```
+ <?php
+ use M6Web\Component\RedisMessageBroker;
+ use Predis\Client as PredisClient;
  
-Doing this, the consumer will first look in non acked message in his own working list. Then it will check in all the working list of the other workers (concerned by the queue) if there is a message more than 360s old. If so the message is returned and be acked normally (this can be slow). Finally, he will look on his ready message list.
+ $redisClient = new PredisClient(); // refer to PredisDocumentation
+ $queue = new RedisMessageBroker\Queue\Definition('raoul');
+ $consumer = new RedisMessageBroker\MessageHandler\LostMessagesConsumer($queue, $redisClient, 360, 3);
+ $consumer->requeueOldMessages();
+ ```
 
+ `messageTtl` parameter need to be superior of your max time to process a message. (Otherwise it will consider a message old when its processing)

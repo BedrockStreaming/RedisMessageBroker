@@ -75,6 +75,11 @@ class Definition
         return $this->name.'_working_list_';
     }
 
+    public function getDeadLetterListName(): string
+    {
+        return $this->name.'_dead_letter_list_';
+    }
+
     /**
      * san the database to get the list of working list for the queue
      *
@@ -90,5 +95,10 @@ class Definition
     public function getQueueLists(PredisClient $client): \Iterator
     {
         return new Iterator\Keyspace($client, $this->getListPrefixName().'*'); // SCAN the database
+    }
+
+    public function getDeadLetterLists(PredisClient $client): \Iterator
+    {
+        return new Iterator\Keyspace($client, $this->getDeadLetterListName().'*'); // SCAN the database
     }
 }

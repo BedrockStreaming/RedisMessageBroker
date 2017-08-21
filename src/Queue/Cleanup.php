@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace M6Web\Component\RedisMessageBroker\Queue;
 
-use M6Web\Component\RedisMessageBroker\Message;
+use M6Web\Component\RedisMessageBroker\MessageEnvelope;
 
 /**
  * Class Cleanup
@@ -21,16 +21,37 @@ class Cleanup extends AbstractQueueTool
      *
      * @return int number of erased messages
      */
-    public function cleanOldMessages(int $maxAge, bool $eraseReadyMessages = false): int
+    public function cleanWorkingListsOldMessages(int $maxAge, bool $eraseReadyMessages = false): int
     {
         $r = 0;
-        $hasToDelete = function (Message $message) use ($maxAge) {
+        $hasToDelete = function (MessageEnvelope $message) use ($maxAge) {
             return (time() - $message->getCreatedAt()->format('U')) > $maxAge; // if message was created before $maxAge
         };
         $r += $this->cleanMessage($this->queue->getWorkingLists($this->redisClient), $hasToDelete);
 
         if ($eraseReadyMessages) {
             $r += $this->cleanMessage($this->queue->getListNames(), $hasToDelete);
+        }
+
+        return $r;
+    }
+
+    /**
+     * this method delete deadletter lists
+     *
+     * @return int number of deleted messages in dead letter lists
+     */
+    public function cleanDeadLetterLists(): int
+    {
+        $r = 0;
+
+        foreach ($this->queue->getDeadLetterLists($this->redisClient) as $deadLetterList) {
+            $this->redisClient->multi();
+            $this->redisClient->llen($deadLetterList);
+            $this->redisClient->del($deadLetterList);
+            $result = $this->redisClient->exec();
+
+            $r += $result[0] ?? 0;
         }
 
         return $r;
@@ -43,7 +64,7 @@ class Cleanup extends AbstractQueueTool
             $listLen = $this->redisClient->llen($list);
             for ($i = 1; $i <= $listLen; ++$i) {
                 $message = $this->redisClient->rpoplpush($list, $list);
-                if ($hasToDelete(Message::unserializeMessage($message))) {
+                if ($hasToDelete(MessageEnvelope::unserializeMessage($message))) {
                     $r += $this->redisClient->lrem($list, 0, $message);
                 }
             }

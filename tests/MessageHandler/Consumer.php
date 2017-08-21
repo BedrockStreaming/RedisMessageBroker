@@ -7,7 +7,7 @@ use \mageekguy\atoum;
 
 use M6Web\Component\RedisMessageBroker\MessageHandler\Producer;
 use M6Web\Component\RedisMessageBroker\Queue\Definition;
-use M6Web\Component\RedisMessageBroker\Message;
+use M6Web\Component\RedisMessageBroker\MessageEnvelope;
 
 class Consumer extends atoum\test
 {
@@ -18,7 +18,7 @@ class Consumer extends atoum\test
                 $queue = new Definition('queue1'.uniqid('test_redis', false)), // unique queue
                 $redisClient = new \Predis\Client(),
                 $producer = new Producer($queue, $redisClient),
-                $message = new Message('message in the bottle'),
+                $message = new MessageEnvelope(uniqid(), 'message in the bottle'),
                 $producer->publishMessage($message)
             )
             ->and(
@@ -37,13 +37,6 @@ class Consumer extends atoum\test
         ;
     }
 
-    /*
-    public function testWorkingList()
-    {
-
-    }
-    */
-
     public function testAck()
     {
         $this
@@ -51,7 +44,7 @@ class Consumer extends atoum\test
                 $queue = new Definition('queue2'.uniqid('test_redis', false)), // unique queue
                 $redisClient = new \mock\Predis\Client(),
                 $producer = new Producer($queue, $redisClient),
-                $message = new Message('message in the bottle'),
+                $message = new MessageEnvelope(uniqid(), 'message in the bottle'),
                 $producer->publishMessage($message)
             )
             ->and(
@@ -83,7 +76,7 @@ class Consumer extends atoum\test
             ->if($producer->publishMessage($message))
             ->and($newMessage = $consumer->getMessage())
             ->then(
-                // a new consumer should be able to get the message beacause is not acked
+                // a new consumer should NOT be able to get the message even if is not acked
                 $consumer2 = $this->newTestedInstance($queue, $redisClient, 'testConsumer2'.uniqid('test_redis', false)),
                 $consumer2->ack($message)
             )
@@ -91,8 +84,116 @@ class Consumer extends atoum\test
                 ->integer($inspector->countReadyMessages())
                     ->isEqualTo(0)
                 ->integer($inspector->countInProgressMessages())
-                    ->isEqualTo(0)
+                    ->isEqualTo(1)
             ;
+    }
+
+    public function testAckAll()
+    {
+        $this
+            ->if(
+                $queue = new Definition('queue2'.uniqid('test_redis', false)), // unique queue
+                $redisClient = new \mock\Predis\Client(),
+
+                // publish two messages
+                $producer = new Producer($queue, $redisClient),
+                $producer->publishMessage(new MessageEnvelope(uniqid(), 'message in the bottle')),
+                $producer->publishMessage(new MessageEnvelope(uniqid(), 'message in the bottle2')),
+
+                $consumer = $this->newTestedInstance($queue, $redisClient, 'testConsumer1'.uniqid('test_redis', false)),
+                $consumer->setNoAutoAck(),
+
+                $inspector = new Inspector($queue, $redisClient)
+            )
+            ->then
+                ->object($consumer->getMessage())
+                ->object($consumer->getMessage())
+
+                // messages should not be in the queue but in the working list
+                ->integer($inspector->countReadyMessages())
+                    ->isEqualTo(0)
+                ->integer($inspector->countInProgressMessages())
+                    ->isEqualTo(2)
+            ->and
+                // ack messages
+                ->integer($consumer->ackAll())
+                // messages is gone
+                ->integer($inspector->countReadyMessages())
+                    ->isEqualTo(0)
+                ->integer($inspector->countInProgressMessages())
+                    ->isEqualTo(0)
+        ;
+    }
+
+    public function testUnack()
+    {
+        $this
+            ->if(
+                $queue = new Definition('queue2'.uniqid('test_redis', false)), // unique queue
+                $redisClient = new \mock\Predis\Client(),
+
+                $producer = new Producer($queue, $redisClient),
+                $producer->publishMessage(new MessageEnvelope(uniqid(), 'message in the bottle')),
+
+                $consumer = $this->newTestedInstance($queue, $redisClient, 'testConsumer1'.uniqid('test_redis', false)),
+                $consumer->setNoAutoAck(),
+
+                $inspector = new Inspector($queue, $redisClient)
+            )
+            ->then
+                ->object($message = $consumer->getMessage())
+
+                // messages should not be in the queue but in the working list
+                ->integer($inspector->countReadyMessages())
+                    ->isEqualTo(0)
+                ->integer($inspector->countInProgressMessages())
+                    ->isEqualTo(1)
+            ->and
+                // ack messages
+                ->integer($consumer->unack($message))
+                // messages is gone
+                ->integer($inspector->countReadyMessages())
+                    ->isEqualTo(1)
+                ->integer($inspector->countInProgressMessages())
+                    ->isEqualTo(0)
+        ;
+    }
+
+    public function testUnackAll()
+    {
+        $this
+            ->if(
+                $queue = new Definition('queue2'.uniqid('test_redis', false)), // unique queue
+                $redisClient = new \mock\Predis\Client(),
+
+                // publish two messages
+                $producer = new Producer($queue, $redisClient),
+                $producer->publishMessage(new MessageEnvelope(uniqid(), 'message in the bottle')),
+                $producer->publishMessage(new MessageEnvelope(uniqid(), 'message in the bottle2')),
+
+                $consumer = $this->newTestedInstance($queue, $redisClient, 'testConsumer1'.uniqid('test_redis', false)),
+                $consumer->setNoAutoAck(),
+
+                $inspector = new Inspector($queue, $redisClient)
+            )
+            ->then
+                ->object($consumer->getMessage())
+                ->object($consumer->getMessage())
+
+                // messages should not be in the queue but in the working list
+                ->integer($inspector->countReadyMessages())
+                ->isEqualTo(0)
+                ->integer($inspector->countInProgressMessages())
+                ->isEqualTo(2)
+            ->and
+                // ack messages
+                ->integer($consumer->unackAll())
+                // messages is gone
+                ->integer($inspector->countReadyMessages())
+                    ->isEqualTo(2)
+                ->integer($inspector->countInProgressMessages())
+                    ->isEqualTo(0)
+        ;
     }
 
     public function testConsumeOnMultipleList()
@@ -102,7 +203,7 @@ class Consumer extends atoum\test
                 $queue = new Definition('queue3'.uniqid('test_redis', false), 10000), // unique queue with a lot of list
                 $redisClient = new \Predis\Client(),
                 $producer = new Producer($queue, $redisClient),
-                $message = new Message('message in the bottle'),
+                $message = new MessageEnvelope(uniqid(), 'message in the bottle'),
                 $producer->publishMessage($message),
                 $inspector = new Inspector($queue, $redisClient)
             )
@@ -129,51 +230,6 @@ class Consumer extends atoum\test
                 ->isEqualTo(0)
             ->integer($inspector->countWorkingListQueues())
                 ->isEqualTo(0) // working list is empty so has been deleted
-        ;
-    }
-
-
-    public function testGrabbingOldMessage()
-    {
-        $this
-            ->if(
-                $queue = new Definition('queue4'.uniqid('test_redis', false)), // unique queue with a lot of list
-                $redisClient = new \Predis\Client(),
-                $producer = new Producer($queue, $redisClient),
-                $message = new Message('message in the bottle'),
-                $producer->publishMessage($message), // publish a message
-                $inspector = new Inspector($queue, $redisClient)
-            )
-            ->then(
-                $consumer = $this->newTestedInstance($queue, $redisClient, 'testConsumer4'.uniqid('test_redis1', false)),
-                $consumer->setNoAutoAck(),
-                $message = $consumer->getMessage() // get a message
-            )
-            ->then(
-                sleep(10) // build an 20s old message
-            )
-            ->and(
-                $consumer2 = $this->newTestedInstance($queue, $redisClient, 'testConsumer5'.uniqid('test_redis2', false)),
-                $consumer2->setNoAutoAck(),
-                $consumer2->setTimeOldMessage(3600)  // consider 3600s before getting an old message
-            )
-            ->then
-                ->variable($consumer2->getMessage())
-                    ->isNull() // no message is get
-            ->if($consumer2->setTimeOldMessage(5)) // consider now just 5s to get an old message
-            ->then
-                ->object($message2 = $consumer2->getMessage())
-                    ->isInstanceOf('M6Web\Component\RedisMessageBroker\Message')
-                    ->isEqualTo($message) // same message previously published is retrieved
-                ->integer($inspector->countReadyMessages())
-                    ->isEqualTo(0)
-                ->integer($inspector->countInProgressMessages()) // still in the working list
-                    ->isEqualTo(1)
-            ->and
-                ->integer($consumer2->ack($message2))
-                    ->isEqualTo(1) // one message is acked
-                ->integer($inspector->countInProgressMessages())
-                    ->isEqualTo(0) // no more messages in the working list
         ;
     }
 }
