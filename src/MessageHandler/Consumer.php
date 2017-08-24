@@ -137,6 +137,16 @@ class Consumer extends AbstractMessageHandler
         return $nbMessageUnack;
     }
 
+    public function getQueueListsLength(): array
+    {
+        $queueListsLength = [];
+        foreach ($this->queue->getQueueLists($this->redisClient) as $queueName) {
+            $queueListsLength[$queueName] = $this->redisClient->llen($queueName);
+        }
+
+        return $queueListsLength;
+    }
+
     /**
      * the working list has to be unique per consumer worker
      */
