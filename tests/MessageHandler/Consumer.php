@@ -232,4 +232,28 @@ class Consumer extends atoum\test
                 ->isEqualTo(0) // working list is empty so has been deleted
         ;
     }
+
+    public function testGetQueueListsLength()
+    {
+        $this
+            ->if(
+                $queueName = 'queue2'.uniqid('test_redis', false),
+                $queue = new Definition($queueName),
+                $redisClient = new \mock\Predis\Client(),
+
+                // publish two messages
+                $producer = new Producer($queue, $redisClient),
+                $producer->publishMessage(new MessageEnvelope(uniqid(), 'message in the bottle')),
+                $producer->publishMessage(new MessageEnvelope(uniqid(), 'message in the bottle2')),
+
+                $consumer = $this->newTestedInstance($queue, $redisClient, 'testConsumer1'.uniqid('test_redis', false))
+            )
+            ->then
+                ->array($queueListName = $consumer->getQueueListsLength())
+                    ->hasSize(1)
+                    ->hasKey($queueName.'_list__1')
+                ->integer($queueListName[$queueName.'_list__1'])
+                    ->isEqualTo(2)
+        ;
+    }
 }
