@@ -42,7 +42,10 @@ class Consumer extends AbstractMessageHandler
         $this->autoAck = false;
     }
 
-    public function getMessage(): ?MessageEnvelope
+    /**
+     * Get last MessageEnvelope
+     */
+    public function getMessageEnvelope(): ?MessageEnvelope
     {
         $lists = iterator_to_array($this->queue->getQueueLists($this->redisClient));
         shuffle($lists);
@@ -68,19 +71,43 @@ class Consumer extends AbstractMessageHandler
     }
 
     /**
+     * the working list has to be unique per consumer worker
+     */
+    protected function getWorkingList(): string
+    {
+        return $this->queue->getWorkingListPrefixName().'-'.$this->uniqueId;
+    }
+
+    /**
      * @param MessageEnvelope $message this message will be acked in the working lists
+     * @param int             $count   number of removed first elements from the list stored
      *
      * @return int the number of messages acked
      */
-    public function ack(MessageEnvelope $message): int
+    public function ack(MessageEnvelope $message, int $count = 0): int
     {
-        $nbMessageAck = $this->removeMessageInWorkingList($message);
+        $nbMessageAck = $this->removeMessageInWorkingList($message, $count);
 
         if ($this->eventCallback) {
             ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::ACK_EVENT, $nbMessageAck, $this->getWorkingList()));
         }
 
         return $nbMessageAck;
+    }
+
+    /**
+     * @param MessageEnvelope $message
+     * @param int             $count   number of removed first elements from the list stored
+     *
+     * @see https://redis.io/commands/lrem for more informations on the $count parameter
+     *
+     * @return int the number of messages deleted
+     */
+    protected function removeMessageInWorkingList(MessageEnvelope $message, int $count = 0): int
+    {
+        $serializedMessage = $message->getSerializedValue();
+
+        return $this->redisClient->lrem($this->getWorkingList(), $count, $serializedMessage);
     }
 
     /**
@@ -98,16 +125,32 @@ class Consumer extends AbstractMessageHandler
     }
 
     /**
+     * @param string $list
+     *
+     * @return int nb of elements in deleted list
+     */
+    protected function removeList(string $list)
+    {
+        $this->redisClient->multi();
+        $this->redisClient->llen($list);
+        $this->redisClient->del([$list]);
+        $result = $this->redisClient->exec();
+
+        return $result[0] ?? 0;
+    }
+
+    /**
      * @param MessageEnvelope $message
+     * @param int             $count   number of removed first elements from the list stored
      *
      * @return int the number of messages unack
      */
-    public function unack(MessageEnvelope $message): int
+    public function unack(MessageEnvelope $message, int $count = 0): int
     {
         $queueList = $this->queue->getARandomListName();
 
-        if ($nbMessageUnack = $this->removeMessageInWorkingList($message)) {
-            $this->redisClient->lpush($queueList, $message->getSerializedValue());
+        if ($nbMessageUnack = $this->removeMessageInWorkingList($message, $count)) {
+            $this->redisClient->lpush($queueList, [$message->getSerializedValue()]);
         }
 
         if ($this->eventCallback) {
@@ -127,7 +170,7 @@ class Consumer extends AbstractMessageHandler
 
         do {
             $message = $this->redisClient->rpoplpush($this->getWorkingList(), $queueList);
-            ++$nbMessageUnack;
+            $nbMessageUnack++;
         } while (!is_null($message));
 
         if ($this->eventCallback) {
@@ -145,40 +188,5 @@ class Consumer extends AbstractMessageHandler
         }
 
         return $queueListsLength;
-    }
-
-    /**
-     * the working list has to be unique per consumer worker
-     */
-    protected function getWorkingList(): string
-    {
-        return $this->queue->getWorkingListPrefixName().'-'.$this->uniqueId;
-    }
-
-    /**
-     * @param MessageEnvelope $message
-     *
-     * @return int the number of messages deleted
-     */
-    protected function removeMessageInWorkingList(MessageEnvelope $message)
-    {
-        $serializedMessage = $message->getSerializedValue();
-
-        return $this->redisClient->lrem($this->getWorkingList(), 0, $serializedMessage);
-    }
-
-    /**
-     * @param string $list
-     *
-     * @return int nb of elements in deleted list
-     */
-    protected function removeList(string $list)
-    {
-        $this->redisClient->multi();
-        $this->redisClient->llen($list);
-        $this->redisClient->del($list);
-        $result = $this->redisClient->exec();
-
-        return $result[0] ?? 0;
     }
 }

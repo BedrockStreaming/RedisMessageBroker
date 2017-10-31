@@ -37,7 +37,7 @@ $redisClient = new PredisClient(); // refer to PredisDocumentation
 $queue = new RedisMessageBroker\Queue\Definition('raoul');
 $consumer = new RedisMessageBroker\MessageHandler\Consumer($queue, $redisClient, uniqid());
 
-$message = $consumer->getMessage();
+$message = $consumer->getMessageEnvelope();
 
 ```
 
@@ -104,7 +104,7 @@ $queue = new RedisMessageBroker\Queue\Definition('raoul');
 $consumer = new RedisMessageBroker\MessageHandler\Consumer($queue, $redisClient, uniqid());
 $consumer->setNoAutoAck();
 
-$message = $consumer->getMessage();
+$message = $consumer->getMessageEnvelope();
 if ($message) {
     // do something with the message
     $consumer->ack($message); // erase the message from the working list

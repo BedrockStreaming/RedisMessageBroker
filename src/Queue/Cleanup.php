@@ -62,7 +62,7 @@ class Cleanup extends AbstractQueueTool
         $r = 0;
         foreach ($lists as $list) {
             $listLen = $this->redisClient->llen($list);
-            for ($i = 1; $i <= $listLen; ++$i) {
+            for ($i = 1; $i <= $listLen; $i++) {
                 $message = $this->redisClient->rpoplpush($list, $list);
                 if ($hasToDelete(MessageEnvelope::unserializeMessage($message))) {
                     $r += $this->redisClient->lrem($list, 0, $message);

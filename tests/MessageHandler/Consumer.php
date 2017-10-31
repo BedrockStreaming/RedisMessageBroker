@@ -26,7 +26,7 @@ class Consumer extends atoum\test
             )
             ->then
                 // get the message produced and see if its the same
-                ->object($newMessage = $consumer->getMessage())
+                ->object($newMessage = $consumer->getMessageEnvelope())
             ->and
                 ->string($newMessage->getMessage())
                 ->isIdenticalTo($message->getMessage())
@@ -55,7 +55,7 @@ class Consumer extends atoum\test
                 $inspector = new Inspector($queue, $redisClient)
             )
             ->then
-                ->object($newMessage = $consumer->getMessage())
+                ->object($newMessage = $consumer->getMessageEnvelope())
             ->and
                 // message should not be in the queue but in the working list
                 ->integer($inspector->countReadyMessages())
@@ -74,7 +74,7 @@ class Consumer extends atoum\test
 
         $this
             ->if($producer->publishMessage($message))
-            ->and($newMessage = $consumer->getMessage())
+            ->and($newMessage = $consumer->getMessageEnvelope())
             ->then(
                 // a new consumer should NOT be able to get the message even if is not acked
                 $consumer2 = $this->newTestedInstance($queue, $redisClient, 'testConsumer2'.uniqid('test_redis', false)),
@@ -106,8 +106,8 @@ class Consumer extends atoum\test
                 $inspector = new Inspector($queue, $redisClient)
             )
             ->then
-                ->object($consumer->getMessage())
-                ->object($consumer->getMessage())
+                ->object($consumer->getMessageEnvelope())
+                ->object($consumer->getMessageEnvelope())
 
                 // messages should not be in the queue but in the working list
                 ->integer($inspector->countReadyMessages())
@@ -141,7 +141,7 @@ class Consumer extends atoum\test
                 $inspector = new Inspector($queue, $redisClient)
             )
             ->then
-                ->object($message = $consumer->getMessage())
+                ->object($message = $consumer->getMessageEnvelope())
 
                 // messages should not be in the queue but in the working list
                 ->integer($inspector->countReadyMessages())
@@ -177,8 +177,8 @@ class Consumer extends atoum\test
                 $inspector = new Inspector($queue, $redisClient)
             )
             ->then
-                ->object($consumer->getMessage())
-                ->object($consumer->getMessage())
+                ->object($consumer->getMessageEnvelope())
+                ->object($consumer->getMessageEnvelope())
 
                 // messages should not be in the queue but in the working list
                 ->integer($inspector->countReadyMessages())
@@ -215,7 +215,7 @@ class Consumer extends atoum\test
             ->if(
                 $consumer = $this->newTestedInstance($queue, $redisClient, 'testConsumer3'.uniqid('test_redis', false)),
                 $consumer->setNoAutoAck(),
-                $message = $consumer->getMessage()
+                $message = $consumer->getMessageEnvelope()
             )
             ->then
                 ->integer($inspector->countListQueues())
