@@ -79,7 +79,7 @@ $cleanup->cleanOldMessages(
 
 ## queue option
 
-To avoid hotpsots (when using redis in a cluster) you can shard a queue on several lists : 
+To avoid hotpsots you can shard a queue on several lists : 
 
 ```php
 $queue = new RedisMessageBroker\Queue\Definition('raoul', 10); // shard on 10 lists
