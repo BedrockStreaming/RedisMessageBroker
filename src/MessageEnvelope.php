@@ -55,7 +55,7 @@ class MessageEnvelope
         return $this->id;
     }
 
-    public function setUpdatedAt(\DateTime $dateTime): MessageEnvelope
+    public function setUpdatedAt(\DateTime $dateTime): self
     {
         $this->createdAt = $dateTime;
 
@@ -74,7 +74,7 @@ class MessageEnvelope
 
     public function incrementRetry()
     {
-        ++$this->retry;
+        $this->retry++;
 
         return $this;
     }
@@ -94,7 +94,7 @@ class MessageEnvelope
         return serialize($this);
     }
 
-    public static function unserializeMessage(string $message): ?MessageEnvelope
+    public static function unserializeMessage(string $message): ?self
     {
         $unserializeMessage = unserialize($message);
 

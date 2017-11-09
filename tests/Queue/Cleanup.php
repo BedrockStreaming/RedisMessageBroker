@@ -57,7 +57,7 @@ class Cleanup extends atoum\test
                 $consumer->setNoAutoAck()
             )
             ->and(
-                $consumer->getMessage(), // get one message
+                $consumer->getMessageEnvelope(), // get one message
                 sleep(4) // build two 4s old message
             )
             ->and
@@ -85,7 +85,7 @@ class Cleanup extends atoum\test
 
                 $consumer = new Consumer($queue, $redisClient, 'testConsumer2'.uniqid('test_redis', false)),
                 $consumer->setNoAutoAck(),
-                $consumer->getMessage(),
+                $consumer->getMessageEnvelope(),
 
 
                 sleep(2),

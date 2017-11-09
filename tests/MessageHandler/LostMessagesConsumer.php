@@ -26,7 +26,7 @@ class LostMessagesConsumer extends atoum\test
 
                 $consumer = new Consumer($queue, $redisClient, 'testConsumer2'.uniqid('test_redis', false)),
                 $consumer->setNoAutoAck(),
-                $consumer->getMessage()
+                $consumer->getMessageEnvelope()
             )
             ->then(
                 sleep(10), // build an 20s old message
@@ -66,7 +66,7 @@ class LostMessagesConsumer extends atoum\test
 
                 $consumer = new Consumer($queue, $redisClient, 'testConsumer2'.uniqid('test_redis', false)),
                 $consumer->setNoAutoAck(),
-                $consumer->getMessage()
+                $consumer->getMessageEnvelope()
             )
             ->then(
                 sleep(2), // build an 2s old message, retry set to 1

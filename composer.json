@@ -19,7 +19,7 @@
     "predis/predis": "^1.1.1"
   },
   "require-dev": {
-    "m6web/php-cs-fixer-config": "0.2.0",
+    "m6web/php-cs-fixer-config": "^1.0",
     "atoum/atoum": "~3.0.0"
   },
   "autoload": {

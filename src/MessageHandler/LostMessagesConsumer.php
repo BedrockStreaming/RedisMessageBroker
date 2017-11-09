@@ -55,7 +55,7 @@ class LostMessagesConsumer extends AbstractMessageHandler
 
     protected function requeueOldMessageFromList(string $list)
     {
-        for ($i = 0, $n = $this->redisClient->llen($list); $i < $n; ++$i) {
+        for ($i = 0, $n = $this->redisClient->llen($list); $i < $n; $i++) {
             $serializedMessage = $this->redisClient->rpoplpush($list, $list);
 
             // check if message is old enough
