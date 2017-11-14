@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace M6Web\Component\RedisMessageBroker\Queue;
 
-use Predis\Client as PredisClient;
+use Predis\ClientInterface;
 use Predis\Collection\Iterator;
 
 /**
@@ -81,23 +81,23 @@ class Definition
     }
 
     /**
-     * san the database to get the list of working list for the queue
+     * scan the database to get the list of working list for the queue
      *
-     * @param PredisClient $client
+     * @param ClientInterface $client
      *
      * @return \Iterator
      */
-    public function getWorkingLists(PredisClient $client): \Iterator
+    public function getWorkingLists(ClientInterface $client): \Iterator
     {
         return new Iterator\Keyspace($client, $this->getWorkingListPrefixName().'*'); // SCAN the database
     }
 
-    public function getQueueLists(PredisClient $client): \Iterator
+    public function getQueueLists(ClientInterface $client): \Iterator
     {
         return new Iterator\Keyspace($client, $this->getListPrefixName().'*'); // SCAN the database
     }
 
-    public function getDeadLetterLists(PredisClient $client): \Iterator
+    public function getDeadLetterLists(ClientInterface $client): \Iterator
     {
         return new Iterator\Keyspace($client, $this->getDeadLetterListName().'*'); // SCAN the database
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace M6Web\Component\RedisMessageBroker\MessageHandler;
 
+use M6Web\Component\RedisMessageBroker\LoggedPredisClient\LoggedPredisClient;
 use M6Web\Component\RedisMessageBroker\Queue;
 use Predis\Client as PredisClient;
 
@@ -15,7 +16,7 @@ abstract class AbstractMessageHandler
     protected $queue;
 
     /**
-     * @var PredisClient
+     * @var LoggedPredisClient
      */
     protected $redisClient;
 
@@ -27,7 +28,7 @@ abstract class AbstractMessageHandler
     public function __construct(Queue\Definition $queue, PredisClient $redisClient)
     {
         $this->queue = $queue;
-        $this->redisClient = $redisClient;
+        $this->redisClient = new LoggedPredisClient($redisClient);
     }
 
     /**
@@ -38,6 +39,7 @@ abstract class AbstractMessageHandler
     public function setEventCallback(\Closure $closure)
     {
         $this->eventCallback = $closure;
+        $this->redisClient->setEventCallback($closure);
 
         return $this;
     }
