@@ -11,10 +11,10 @@ class PredisEvent
     /** @var string */
     protected $command;
 
-    /** @var int */
+    /** @var float */
     protected $executionTime;
 
-    public function __construct(string $command, int $executionTime)
+    public function __construct(string $command, float $executionTime)
     {
         $this->command = $command;
         $this->executionTime = $executionTime;
@@ -25,12 +25,17 @@ class PredisEvent
         return $this->command;
     }
 
-    public function getExecutionTime(): int
+    public function getExecutionTime(): float
     {
         return $this->executionTime;
     }
 
-    public function getTiming(): int
+    /**
+     * Get execution time in milliseconds (used by statsd).
+     *
+     * @return float
+     */
+    public function getTiming(): float
     {
         return $this->executionTime * 1000;
     }
