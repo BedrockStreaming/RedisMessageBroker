@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace M6Web\Component\RedisMessageBroker\Event;
 
-class PredisEvent
+use Symfony\Component\EventDispatcher\Event;
+
+class PredisEvent extends Event
 {
     const EVENT_NAME = 'predis.command';
 
