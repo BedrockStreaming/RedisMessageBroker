@@ -186,7 +186,7 @@ class Consumer extends atoum\test
                 ->integer($inspector->countInProgressMessages())
                 ->isEqualTo(2)
             ->and
-                // ack messages
+                // unack messages
                 ->integer($consumer->unackAll())
                 // messages is gone
                 ->integer($inspector->countReadyMessages())

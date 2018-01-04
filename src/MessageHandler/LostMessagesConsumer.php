@@ -85,7 +85,6 @@ class LostMessagesConsumer extends AbstractMessageHandler
 
     protected function addMessageInQueueList(MessageEnvelope $message)
     {
-        $message->setUpdatedAt(new \DateTime());
         $message->incrementRetry();
 
         $list = $this->queue->getARandomListName();

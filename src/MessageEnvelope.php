@@ -72,8 +72,10 @@ class MessageEnvelope
         return $this->updatedAt;
     }
 
-    public function incrementRetry()
+    public function incrementRetry(): self
     {
+        $this->setUpdatedAt(new \DateTime());
+
         $this->retry++;
 
         return $this;
