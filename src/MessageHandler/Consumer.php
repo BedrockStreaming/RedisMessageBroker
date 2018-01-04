@@ -150,6 +150,8 @@ class Consumer extends AbstractMessageHandler
         $queueList = $this->queue->getARandomListName();
 
         if ($nbMessageUnack = $this->removeMessageInWorkingList($message, $count)) {
+            $message->incrementRetry();
+
             $this->redisClient->lpush($queueList, [$message->getSerializedValue()]);
         }
 
@@ -169,9 +171,16 @@ class Consumer extends AbstractMessageHandler
         $nbMessageUnack = 0;
 
         do {
-            $message = $this->redisClient->rpoplpush($this->getWorkingList(), $queueList);
-            $nbMessageUnack++;
-        } while (!is_null($message));
+            $message = $this->redisClient->rpop($this->getWorkingList());
+
+            if (!empty($message)) {
+                $messageEnvelope = MessageEnvelope::unserializeMessage($message);
+
+                $this->redisClient->lpush($queueList, [$messageEnvelope->getSerializedValue()]);
+
+                $nbMessageUnack++;
+            }
+        } while (!empty($message));
 
         if ($this->eventCallback) {
             ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::UNACK_EVENT, $nbMessageUnack, $queueList));
