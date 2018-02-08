@@ -47,4 +47,9 @@ class ConsumerEvent
     {
         return $this->listName;
     }
+
+    public function getValue(): int
+    {
+        return $this->nbMessage;
+    }
 }
