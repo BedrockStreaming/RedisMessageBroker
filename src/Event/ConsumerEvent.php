@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace M6Web\Component\RedisMessageBroker\Event;
 
-class ConsumerEvent
+use Symfony\Component\EventDispatcher\Event;
+
+class ConsumerEvent extends Event
 {
     const ACK_EVENT = 'ack';
     const UNACK_EVENT = 'unack';
