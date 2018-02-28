@@ -249,10 +249,10 @@ class Consumer extends atoum\test
                 $consumer = $this->newTestedInstance($queue, $redisClient, 'testConsumer1'.uniqid('test_redis', false))
             )
             ->then
-                ->array($queueListName = $consumer->getQueueListsLength())
+                ->array($queueListLength = $consumer->getQueueListsLength())
                     ->hasSize(1)
                     ->hasKey($queueName.'_list__1')
-                ->integer($queueListName[$queueName.'_list__1'])
+                ->integer($queueListLength[$queueName.'_list__1'])
                     ->isEqualTo(2)
         ;
     }

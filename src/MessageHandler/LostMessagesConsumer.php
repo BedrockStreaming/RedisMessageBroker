@@ -87,11 +87,11 @@ class LostMessagesConsumer extends AbstractMessageHandler
     {
         $message->incrementRetry();
 
-        $list = $this->queue->getARandomListName();
-        $this->redisClient->lpush($list, $message->getSerializedValue());
+        $queueName = $this->queue->getARandomListName();
+        $this->redisClient->lpush($queueName, $message->getSerializedValue());
 
         if ($this->eventCallback) {
-            ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::REQUEUE_OLD_MESSAGE, 1, $list));
+            ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::REQUEUE_OLD_MESSAGE, 1, $queueName));
         }
     }
 }
