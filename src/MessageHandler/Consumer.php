@@ -31,9 +31,10 @@ class Consumer extends AbstractMessageHandler
     private $uniqueId;
 
     /** @noinspection MagicMethodsValidityInspection */
-    public function __construct(Queue\Definition $queue, PredisClient $redisClient, string $uniqueId)
+    public function __construct(Queue\Definition $queue, PredisClient $redisClient, ?string $uniqueId)
     {
-        $this->uniqueId = $uniqueId;
+        $this->uniqueId = $uniqueId ?? uniqid();
+
         parent::__construct($queue, $redisClient);
     }
 
@@ -147,16 +148,16 @@ class Consumer extends AbstractMessageHandler
      */
     public function unack(MessageEnvelope $message, int $count = 0): int
     {
-        $queueList = $this->queue->getARandomListName();
+        $queueName = $this->queue->getARandomListName();
 
         if ($nbMessageUnack = $this->removeMessageInWorkingList($message, $count)) {
             $message->incrementRetry();
 
-            $this->redisClient->lpush($queueList, [$message->getSerializedValue()]);
+            $this->redisClient->lpush($queueName, [$message->getSerializedValue()]);
         }
 
         if ($this->eventCallback) {
-            ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::UNACK_EVENT, $nbMessageUnack, $queueList));
+            ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::UNACK_EVENT, $nbMessageUnack, $queueName));
         }
 
         return $nbMessageUnack;
@@ -167,7 +168,7 @@ class Consumer extends AbstractMessageHandler
      */
     public function unackAll(): int
     {
-        $queueList = $this->queue->getARandomListName();
+        $queueName = $this->queue->getARandomListName();
         $nbMessageUnack = 0;
 
         do {
@@ -176,14 +177,14 @@ class Consumer extends AbstractMessageHandler
             if (!empty($message)) {
                 $messageEnvelope = MessageEnvelope::unserializeMessage($message);
 
-                $this->redisClient->lpush($queueList, [$messageEnvelope->getSerializedValue()]);
+                $this->redisClient->lpush($queueName, [$messageEnvelope->getSerializedValue()]);
 
                 $nbMessageUnack++;
             }
         } while (!empty($message));
 
         if ($this->eventCallback) {
-            ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::UNACK_EVENT, $nbMessageUnack, $queueList));
+            ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::UNACK_EVENT, $nbMessageUnack, $queueName));
         }
 
         return $nbMessageUnack;
