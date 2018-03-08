@@ -19,8 +19,9 @@
     "predis/predis": "^1.1.1"
   },
   "require-dev": {
+    "atoum/atoum": "~3.0.0",
     "m6web/php-cs-fixer-config": "^1.0",
-    "atoum/atoum": "~3.0.0"
+    "m6web/redis-mock": "^3.3.1"
   },
   "autoload": {
     "psr-4": { "M6Web\\Component\\RedisMessageBroker\\": "src/" }

@@ -1,8 +1,6 @@
 <?php
 
-
 namespace M6Web\Component\RedisMessageBroker\tests\units;
-
 
 use M6Web\Component\RedisMessageBroker\MessageEnvelope as Base;
 use \mageekguy\atoum;
