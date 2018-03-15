@@ -10,6 +10,9 @@ namespace M6Web\Component\RedisMessageBroker\Queue;
  */
 class Inspector extends AbstractQueueTool
 {
+    /** @const string Key for Memory Section with command REDIS INFO */
+    const REDIS_INFO_MEMORY = 'Memory';
+
     public function countReadyMessages(): int
     {
         $i = 0;
@@ -48,5 +51,53 @@ class Inspector extends AbstractQueueTool
         }
 
         return $i;
+    }
+
+    /**
+     * Get the REDIS memory usage in bytes
+     *
+     * @see https://redis.io/commands/INFO
+     */
+    public function getRedisMemoryUsage(): ?int
+    {
+        $redisInfoMemory = $this->redisClient->info(self::REDIS_INFO_MEMORY);
+
+        if (!empty($redisInfoMemory) && isset($redisInfoMemory[self::REDIS_INFO_MEMORY]['used_memory'])) {
+            return $redisInfoMemory[self::REDIS_INFO_MEMORY]['used_memory'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the REDIS total memory in bytes
+     *
+     * @see https://redis.io/commands/INFO
+     */
+    public function getRedisMemoryTotal(): ?int
+    {
+        $redisInfoMemory = $this->redisClient->info(self::REDIS_INFO_MEMORY);
+
+        if (!empty($redisInfoMemory) && isset($redisInfoMemory[self::REDIS_INFO_MEMORY]['total_system_memory'])) {
+            return $redisInfoMemory[self::REDIS_INFO_MEMORY]['total_system_memory'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Calculate the REDIS free memory in bytes
+     *
+     * @see https://redis.io/commands/INFO
+     */
+    public function getRedisMemoryFree(): ?int
+    {
+        $redisInfoMemory = $this->redisClient->info(self::REDIS_INFO_MEMORY);
+
+        if (!empty($redisInfoMemory) && isset($redisInfoMemory[self::REDIS_INFO_MEMORY]['total_system_memory']) && $redisInfoMemory[self::REDIS_INFO_MEMORY]['used_memory']) {
+            return $redisInfoMemory[self::REDIS_INFO_MEMORY]['total_system_memory'] - $redisInfoMemory[self::REDIS_INFO_MEMORY]['used_memory'];
+        }
+
+        return null;
     }
 }
