@@ -44,36 +44,77 @@ class LostMessagesConsumer extends AbstractMessageHandler
     /**
      * Requeue message with date superior to message ttl
      * Then max retry reached, message is put in dead letter list
+     *
+     * @param int|null $maxExecuteTime
      */
-    public function requeueOldMessages()
+    public function requeueOldMessages(?int $maxExecuteTime = null): void
     {
-        array_map(
-            [$this, 'requeueOldMessageFromList'],
-            iterator_to_array($this->queue->getWorkingLists($this->redisClient))
-        );
-    }
+        $workingLists = iterator_to_array($this->queue->getWorkingLists($this->redisClient));
 
-    protected function requeueOldMessageFromList(string $list)
-    {
-        for ($i = 0, $n = $this->redisClient->llen($list); $i < $n; $i++) {
-            $serializedMessage = $this->redisClient->rpoplpush($list, $list);
+        $startTime = time();
 
-            // check if message is old enough
-            $message = MessageEnvelope::unserializeMessage($serializedMessage);
-            if ((time() - $message->getUpdatedAt()->format('U')) > $this->messageTtl
-                && $this->redisClient->lrem($list, 0, $serializedMessage)) {
-                if ($message->getRetry() < $this->maxRetry) {
-                    $this->addMessageInQueueList($message);
+        shuffle($workingLists);
 
-                    continue;
+        $restTime = null;
+
+        foreach ($workingLists as $workingList) {
+            if (null !== $maxExecuteTime) {
+                $restTime = $maxExecuteTime - (time() - $startTime);
+
+                if ($restTime <= 0) {
+                    break;
                 }
-
-                $this->addMessageInDeadLetterList($message);
             }
+
+            $this->requeueOldMessageFromList($workingList, $restTime);
         }
     }
 
-    protected function addMessageInDeadLetterList(MessageEnvelope $message)
+    /**
+     * Requeue old messages from $list, and remove them if
+     * $messageTTL or time is exceed.
+     *
+     * @param string   $list
+     * @param int|null $maxExecutionTime
+     */
+    protected function requeueOldMessageFromList(string $list, ?int $maxExecutionTime): void
+    {
+        $startTime = time();
+
+        $maxMessages = $this->redisClient->llen($list);
+
+        while (($maxMessages-- > 0) && ($serializedMessage = $this->redisClient->rpoplpush($list, $list))) {
+            $message = empty($serializedMessage) ? null : MessageEnvelope::unserializeMessage($serializedMessage);
+
+            if (!empty($message)) {
+                // Message is old enough
+                if ((time() - $message->getUpdatedAt()->format('U')) > $this->messageTtl) {
+                    // Message is on the list
+                    if ($this->redisClient->lrem($list, 0, $serializedMessage)) {
+                        // Message is not retry too many times
+                        if ($message->getRetry() < $this->maxRetry) {
+                            // Add it on the Queue list (again)
+                            $this->addMessageInQueueList($message);
+                        } else {
+                            // Message is retried too many times; add it to the deadLetterList
+                            $this->addMessageInDeadLetterList($message);
+                        }
+                    }
+                } // Else : Message isn't too old : Do nothing.
+            } else {
+                // Message is empty, Remove it.
+                $this->redisClient->lrem($list, 0, $serializedMessage);
+            }
+
+            if (null !== $maxExecutionTime && $maxExecutionTime - (time() - $startTime) <= 0) {
+                break;
+            }
+        }
+
+        $this->redisClient->rpoplpush($list, $list);
+    }
+
+    protected function addMessageInDeadLetterList(MessageEnvelope $message): void
     {
         $list = $this->queue->getDeadLetterListName();
         $this->redisClient->lpush($list, $message->getSerializedValue());
@@ -83,7 +124,7 @@ class LostMessagesConsumer extends AbstractMessageHandler
         }
     }
 
-    protected function addMessageInQueueList(MessageEnvelope $message)
+    protected function addMessageInQueueList(MessageEnvelope $message): void
     {
         $message->incrementRetry();
 
