@@ -22,14 +22,14 @@ class MessageEnvelope extends atoum\test
             ;
     }
 
-    public function testSerialize($message)
+    public function testSerialize(bool $doCompression, $message)
     {
         $this
             ->if($messageEnvelope = $this->newTestedInstance(uniqid(), $message))
             ->then
-                ->string($serializedValue = $messageEnvelope->getSerializedValue())
+                ->string($storedMessage = $messageEnvelope->getStorableValue($doCompression))
             ->and
-                ->object($transportedMessage = Base::unserializeMessage($serializedValue))
+                ->object($transportedMessage = Base::unstoreMessage($storedMessage))
                     ->isEqualTo($messageEnvelope)
             ;
     }
@@ -39,7 +39,7 @@ class MessageEnvelope extends atoum\test
         $this
             ->if($message = serialize(new \DateTime()))
             ->then
-                ->variable($transportedMessage = Base::unserializeMessage($message))
+                ->variable($transportedMessage = Base::unstoreMessage($message))
                     ->isNull()
         ;
     }
@@ -47,12 +47,10 @@ class MessageEnvelope extends atoum\test
     protected function testSerializeDataProvider()
     {
        return [
-           [
-               'raoul the message'
-           ],
-           [
-               new \SplStack()
-           ]
+           [true, 'raoul the message'],
+           [false, 'raoul the message'],
+           [true, new \SplStack()],
+           [false, new \SplStack()],
        ];
     }
 }

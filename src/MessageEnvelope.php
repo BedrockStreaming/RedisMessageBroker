@@ -50,7 +50,7 @@ class MessageEnvelope
         $this->retry = 0;
     }
 
-    public function getId()
+    public function getId(): string
     {
         return $this->id;
     }
@@ -81,24 +81,35 @@ class MessageEnvelope
         return $this;
     }
 
-    public function getRetry()
+    public function getRetry(): int
     {
         return $this->retry;
     }
 
-    public function getMessage()
+    public function getMessage(): string
     {
         return $this->message;
     }
 
-    public function getSerializedValue(): string
+    public function getStorableValue(bool $doCompression = false): string
     {
-        return serialize($this);
+        $serializedValue = \serialize($this);
+
+        if ($doCompression) {
+            return \gzdeflate($serializedValue, 9);
+        }
+
+        return $serializedValue;
     }
 
-    public static function unserializeMessage(string $message): ?self
+    public static function unstoreMessage(string $storedMessage): ?self
     {
-        $unserializeMessage = unserialize($message);
+        // If the message is compressed, uncompress it.
+        if (($messageUncompressed = @gzinflate($storedMessage)) !== false) {
+            $storedMessage = $messageUncompressed;
+        }
+
+        $unserializeMessage = \unserialize($storedMessage);
 
         return ($unserializeMessage instanceof self) ? $unserializeMessage : null;
     }

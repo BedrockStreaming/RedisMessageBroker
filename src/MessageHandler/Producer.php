@@ -18,11 +18,11 @@ class Producer extends AbstractMessageHandler
      *
      * @param MessageEnvelope $message the message
      *
-     * @return int the number of message in the physical redis list. Be aware thats not necessary the number of the message in the queue
+     * @return int the number of message in the physical redis list. Be aware that's not necessary the number of the message in the queue
      */
     public function publishMessage(MessageEnvelope $message): int
     {
         // push message in the list
-        return $this->redisClient->lpush($this->queue->getARandomListName(), $message->getSerializedValue());
+        return $this->redisClient->lpush($this->queue->getARandomListName(), $message->getStorableValue($this->doMessageCompression));
     }
 }
