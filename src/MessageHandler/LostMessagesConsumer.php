@@ -83,14 +83,14 @@ class LostMessagesConsumer extends AbstractMessageHandler
 
         $maxMessages = $this->redisClient->llen($list);
 
-        while (($maxMessages-- > 0) && ($serializedMessage = $this->redisClient->rpoplpush($list, $list))) {
-            $message = empty($serializedMessage) ? null : MessageEnvelope::unserializeMessage($serializedMessage);
+        while (($maxMessages-- > 0) && ($storredMessage = $this->redisClient->rpoplpush($list, $list))) {
+            $message = empty($storredMessage) ? null : MessageEnvelope::unstoreMessage($storredMessage);
 
             if (!empty($message)) {
                 // Message is old enough
                 if ((time() - $message->getUpdatedAt()->format('U')) > $this->messageTtl) {
                     // Message is on the list
-                    if ($this->redisClient->lrem($list, 0, $serializedMessage)) {
+                    if ($this->redisClient->lrem($list, 0, $storredMessage)) {
                         // Message is not retry too many times
                         if ($message->getRetry() < $this->maxRetry) {
                             // Add it on the Queue list (again)
@@ -103,7 +103,7 @@ class LostMessagesConsumer extends AbstractMessageHandler
                 } // Else : Message isn't too old : Do nothing.
             } else {
                 // Message is empty, Remove it.
-                $this->redisClient->lrem($list, 0, $serializedMessage);
+                $this->redisClient->lrem($list, 0, $storredMessage);
             }
 
             if (null !== $maxExecutionTime && $maxExecutionTime - (time() - $startTime) <= 0) {
@@ -117,7 +117,7 @@ class LostMessagesConsumer extends AbstractMessageHandler
     protected function addMessageInDeadLetterList(MessageEnvelope $message): void
     {
         $list = $this->queue->getDeadLetterListName();
-        $this->redisClient->lpush($list, $message->getSerializedValue());
+        $this->redisClient->lpush($list, $message->getStorableValue($this->doMessageCompression));
 
         if ($this->eventCallback) {
             ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::MAX_RETRY_REACHED, 1, $list));
@@ -129,7 +129,7 @@ class LostMessagesConsumer extends AbstractMessageHandler
         $message->incrementRetry();
 
         $queueName = $this->queue->getARandomListName();
-        $this->redisClient->lpush($queueName, $message->getSerializedValue());
+        $this->redisClient->lpush($queueName, $message->getStorableValue($this->doMessageCompression));
 
         if ($this->eventCallback) {
             ($this->eventCallback)(new ConsumerEvent(ConsumerEvent::REQUEUE_OLD_MESSAGE, 1, $queueName));

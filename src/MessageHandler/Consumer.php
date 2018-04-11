@@ -24,18 +24,18 @@ class Consumer extends AbstractMessageHandler
     private $autoAck = true;
 
     /**
-     * uniqueId can be used to setup a unique workling list
+     * uniqueId can be used to setup a unique working list
      *
      * @var string
      */
     private $uniqueId;
 
     /** @noinspection MagicMethodsValidityInspection */
-    public function __construct(Queue\Definition $queue, PredisClient $redisClient, ?string $uniqueId)
+    public function __construct(Queue\Definition $queue, PredisClient $redisClient, ?string $uniqueId, bool $compressMessages = false)
     {
         $this->uniqueId = $uniqueId ?? uniqid();
 
-        parent::__construct($queue, $redisClient);
+        parent::__construct($queue, $redisClient, $compressMessages);
     }
 
     public function setNoAutoAck()
@@ -55,7 +55,7 @@ class Consumer extends AbstractMessageHandler
         if ($this->autoAck) {
             foreach ($lists as $list) {
                 if ($message = $this->redisClient->rpop($list)) {
-                    return MessageEnvelope::unserializeMessage($message);
+                    return MessageEnvelope::unstoreMessage($message, $this->doMessageCompression);
                 }
             }
         }
@@ -64,7 +64,7 @@ class Consumer extends AbstractMessageHandler
         // grab something in the queue and put it in the workinglist while returning the message
         foreach ($lists as $list) {
             if ($message = $this->redisClient->rpoplpush($list, $this->getWorkingList())) {
-                return MessageEnvelope::unserializeMessage($message);
+                return MessageEnvelope::unstoreMessage($message, $this->doMessageCompression);
             }
         }
 
@@ -106,9 +106,9 @@ class Consumer extends AbstractMessageHandler
      */
     protected function removeMessageInWorkingList(MessageEnvelope $message, int $count = 0): int
     {
-        $serializedMessage = $message->getSerializedValue();
+        $storedMessage = $message->getStorableValue($this->doMessageCompression);
 
-        return $this->redisClient->lrem($this->getWorkingList(), $count, $serializedMessage);
+        return $this->redisClient->lrem($this->getWorkingList(), $count, $storedMessage);
     }
 
     /**
@@ -153,7 +153,7 @@ class Consumer extends AbstractMessageHandler
         if ($nbMessageUnack = $this->removeMessageInWorkingList($message, $count)) {
             $message->incrementRetry();
 
-            $this->redisClient->lpush($queueName, [$message->getSerializedValue()]);
+            $this->redisClient->lpush($queueName, [$message->getStorableValue($this->doMessageCompression)]);
         }
 
         if ($this->eventCallback) {
@@ -175,9 +175,9 @@ class Consumer extends AbstractMessageHandler
             $message = $this->redisClient->rpop($this->getWorkingList());
 
             if (!empty($message)) {
-                $messageEnvelope = MessageEnvelope::unserializeMessage($message);
+                $messageEnvelope = MessageEnvelope::unstoreMessage($message, $this->doMessageCompression);
 
-                $this->redisClient->lpush($queueName, [$messageEnvelope->getSerializedValue()]);
+                $this->redisClient->lpush($queueName, [$messageEnvelope->getStorableValue($this->doMessageCompression)]);
 
                 $nbMessageUnack++;
             }

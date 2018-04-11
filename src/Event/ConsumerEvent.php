@@ -8,10 +8,10 @@ use Symfony\Component\EventDispatcher\Event;
 
 class ConsumerEvent extends Event
 {
-    const ACK_EVENT = 'ack';
-    const UNACK_EVENT = 'unack';
-    const REQUEUE_OLD_MESSAGE = 'requeue_old_message';
-    const MAX_RETRY_REACHED = 'max_retry_reached';
+    public const ACK_EVENT = 'ack';
+    public const UNACK_EVENT = 'unack';
+    public const REQUEUE_OLD_MESSAGE = 'requeue_old_message';
+    public const MAX_RETRY_REACHED = 'max_retry_reached';
 
     /**
      * @var string

@@ -21,13 +21,21 @@ abstract class AbstractMessageHandler
     protected $redisClient;
 
     /**
+     * Should messages be compressed in redis?
+     *
+     * @var bool
+     */
+    protected $doMessageCompression;
+
+    /**
      * @var \Closure
      */
     protected $eventCallback;
 
-    public function __construct(Queue\Definition $queue, PredisClient $redisClient)
+    public function __construct(Queue\Definition $queue, PredisClient $redisClient, bool $doMessageCompression = false)
     {
         $this->queue = $queue;
+        $this->doMessageCompression = $doMessageCompression;
         $this->redisClient = new LoggedPredisClient($redisClient);
     }
 
@@ -36,7 +44,7 @@ abstract class AbstractMessageHandler
      *
      * @return $this
      */
-    public function setEventCallback(\Closure $closure)
+    public function setEventCallback(\Closure $closure): self
     {
         $this->eventCallback = $closure;
         $this->redisClient->setEventCallback($closure);
