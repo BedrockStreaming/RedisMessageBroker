@@ -55,7 +55,7 @@ class Consumer extends AbstractMessageHandler
         if ($this->autoAck) {
             foreach ($lists as $list) {
                 if ($message = $this->redisClient->rpop($list)) {
-                    return MessageEnvelope::unstoreMessage($message);
+                    return MessageEnvelope::unstoreMessage($message, $this->doMessageCompression);
                 }
             }
         }
@@ -64,7 +64,7 @@ class Consumer extends AbstractMessageHandler
         // grab something in the queue and put it in the workinglist while returning the message
         foreach ($lists as $list) {
             if ($message = $this->redisClient->rpoplpush($list, $this->getWorkingList())) {
-                return MessageEnvelope::unstoreMessage($message);
+                return MessageEnvelope::unstoreMessage($message, $this->doMessageCompression);
             }
         }
 
@@ -175,7 +175,7 @@ class Consumer extends AbstractMessageHandler
             $message = $this->redisClient->rpop($this->getWorkingList());
 
             if (!empty($message)) {
-                $messageEnvelope = MessageEnvelope::unstoreMessage($message);
+                $messageEnvelope = MessageEnvelope::unstoreMessage($message, $this->doMessageCompression);
 
                 $this->redisClient->lpush($queueName, [$messageEnvelope->getStorableValue($this->doMessageCompression)]);
 

@@ -102,10 +102,10 @@ class MessageEnvelope
         return $serializedValue;
     }
 
-    public static function unstoreMessage(string $storedMessage): ?self
+    public static function unstoreMessage(string $storedMessage, bool $isCompressed = false): ?self
     {
         // If the message is compressed, uncompress it.
-        if (($messageUncompressed = @gzinflate($storedMessage)) !== false) {
+        if ($isCompressed && ($messageUncompressed = @gzinflate($storedMessage)) !== false) {
             $storedMessage = $messageUncompressed;
         }
 
