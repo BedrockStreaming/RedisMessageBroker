@@ -29,11 +29,11 @@ class LostMessagesConsumer extends AbstractMessageHandler
     protected $maxRetry;
 
     /** @noinspection MagicMethodsValidityInspection */
-    public function __construct(Queue\Definition $queue, PredisClient $redisClient, int $messageTtl, int $maxRetry = 1)
+    public function __construct(Queue\Definition $queue, PredisClient $redisClient, int $messageTtl, int $maxRetry = 1, bool $compressMessages = false)
     {
         $this->messageTtl = $messageTtl;
         $this->maxRetry = $maxRetry;
-        parent::__construct($queue, $redisClient);
+        parent::__construct($queue, $redisClient, $compressMessages);
     }
 
     public function setMessageTtl(int $messageTtl): void
@@ -84,7 +84,7 @@ class LostMessagesConsumer extends AbstractMessageHandler
         $maxMessages = $this->redisClient->llen($list);
 
         while (($maxMessages-- > 0) && ($storredMessage = $this->redisClient->rpoplpush($list, $list))) {
-            $message = empty($storredMessage) ? null : MessageEnvelope::unstoreMessage($storredMessage);
+            $message = empty($storredMessage) ? null : MessageEnvelope::unstoreMessage($storredMessage, $this->doMessageCompression);
 
             if (!empty($message)) {
                 // Message is old enough
