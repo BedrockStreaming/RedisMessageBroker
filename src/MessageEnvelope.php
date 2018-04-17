@@ -22,7 +22,7 @@ class MessageEnvelope
     private $updatedAt;
 
     /**
-     * @var string
+     * @var string|array
      */
     private $message;
 
@@ -86,7 +86,7 @@ class MessageEnvelope
         return $this->retry;
     }
 
-    public function getMessage(): string
+    public function getMessage()
     {
         return $this->message;
     }
