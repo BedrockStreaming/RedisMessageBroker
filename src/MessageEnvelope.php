@@ -22,7 +22,7 @@ class MessageEnvelope
     private $updatedAt;
 
     /**
-     * @var string|array
+     * @var mixed
      */
     private $message;
 
@@ -48,6 +48,13 @@ class MessageEnvelope
         }
         $this->updatedAt = $this->createdAt;
         $this->retry = 0;
+    }
+
+    public function __clone()
+    {
+        if (is_object($this->message)) {
+            $this->message = clone $this->message;
+        }
     }
 
     public function getId(): string
